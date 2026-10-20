@@ -29,7 +29,11 @@ export function HomePage() {
             <div className="kp-brand" style={{ fontSize: "1.4rem" }}>
               Keep Password
             </div>
-            <h1>开发与运维的本地密码库</h1>
+            <h1>
+              开发与运维的
+              <br />
+              <span style={{ whiteSpace: "nowrap" }}>本地密码库</span>
+            </h1>
             <p className="lead">
               网站、服务器、数据库与 SSH 密钥加密保存在本机。需要时再开启零知识网络同步，数据仍然只有你能解开。
             </p>
