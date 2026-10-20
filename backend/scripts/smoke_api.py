@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import base64
 import json
-import re
 import sys
-from io import StringIO
+from pathlib import Path
+
+# 允许直接 `python scripts/smoke_api.py`
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import create_app
 from app.extensions import db

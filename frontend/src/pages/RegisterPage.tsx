@@ -86,8 +86,8 @@ export function RegisterPage() {
             <Typography.Paragraph>
               验证码已发送到 <strong>{email}</strong>
             </Typography.Paragraph>
-            <Form.Item name="code" label="验证码" rules={[{ required: true, len: 6 }]}>
-              <Input maxLength={6} />
+            <Form.Item name="code" label="验证码" rules={[{ required: true, min: 8, max: 8, message: "请输入 8 位验证码" }]}>
+              <Input maxLength={8} style={{ textTransform: "uppercase" }} />
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>
               验证并下载绑定密钥

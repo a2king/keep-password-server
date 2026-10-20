@@ -3,19 +3,34 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
+from flask import current_app
+
 from app.extensions import db
 from app.mail import send_mail
 from app.models import EmailToken, User, utcnow
 from app.security import hash_token
 
 
+def _make_code(length: int = 8) -> str:
+    # 去掉易混淆字符
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
 def issue_email_code(user: User, purpose: str, ttl_minutes: int = 30) -> str:
-    code = f"{secrets.randbelow(1_000_000):06d}"
+    # 使同用途旧码失效，避免多码并行被刷
+    now = utcnow()
+    EmailToken.query.filter_by(user_id=user.id, purpose=purpose, used_at=None).update(
+        {"used_at": now},
+        synchronize_session=False,
+    )
+    code = _make_code(8)
     token = EmailToken(
         user_id=user.id,
         purpose=purpose,
         code_hash=hash_token(code),
-        expires_at=utcnow() + timedelta(minutes=ttl_minutes),
+        expires_at=now + timedelta(minutes=ttl_minutes),
+        attempts=0,
     )
     db.session.add(token)
     db.session.commit()
@@ -23,24 +38,40 @@ def issue_email_code(user: User, purpose: str, ttl_minutes: int = 30) -> str:
 
 
 def consume_email_code(user: User, purpose: str, code: str) -> bool:
+    """校验验证码；失败会计次，超过上限则作废。"""
     now = utcnow()
-    rows = (
+    max_attempts = int(current_app.config.get("EMAIL_CODE_MAX_ATTEMPTS", 5))
+    row = (
         EmailToken.query.filter_by(user_id=user.id, purpose=purpose, used_at=None)
         .order_by(EmailToken.id.desc())
-        .limit(5)
-        .all()
+        .first()
     )
-    target = hash_token(code.strip())
-    for row in rows:
-        expires = row.expires_at
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=now.tzinfo)
-        if expires < now:
-            continue
-        if row.code_hash == target:
-            row.used_at = now
-            db.session.commit()
-            return True
+    if row is None:
+        return False
+
+    expires = row.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=now.tzinfo)
+    if expires < now:
+        row.used_at = now
+        db.session.commit()
+        return False
+
+    if row.attempts >= max_attempts:
+        row.used_at = now
+        db.session.commit()
+        return False
+
+    target = hash_token((code or "").strip().upper())
+    if row.code_hash == target:
+        row.used_at = now
+        db.session.commit()
+        return True
+
+    row.attempts += 1
+    if row.attempts >= max_attempts:
+        row.used_at = now
+    db.session.commit()
     return False
 
 

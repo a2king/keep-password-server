@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 
@@ -11,8 +10,7 @@ from app.config import Config
 from app.extensions import db, migrate
 
 
-def create_app(config_object: type = Config) -> Flask:
-    load_dotenv()
+def create_app(config_object: type = Config, *, init_db: bool = True) -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_object)
 
@@ -28,7 +26,11 @@ def create_app(config_object: type = Config) -> Flask:
 
     db.init_app(app)
     migrate.init_app(app, db)
-    CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}}, supports_credentials=True)
+
+    origins = app.config["CORS_ORIGINS"]
+    # credentials + "*" 非法；若误配为 * 则关闭 credentials
+    cors_credentials = origins != ["*"]
+    CORS(app, resources={r"/api/*": {"origins": origins}}, supports_credentials=cors_credentials)
 
     from app.api import api_bp
 
@@ -43,16 +45,26 @@ def create_app(config_object: type = Config) -> Flask:
 
     register_cli(app)
 
-    with app.app_context():
-        db.create_all()
+    if init_db:
+        from app.dbutil import ensure_schema
+
+        ensure_schema(app)
 
     return app
 
 
 def register_cli(app: Flask) -> None:
+    @app.cli.command("init-db")
+    def init_db_cmd() -> None:
+        """创建/补齐数据库表（可在 gunicorn 启动前单独执行）。"""
+        from app.dbutil import ensure_schema
+
+        ensure_schema(app)
+        print("database ready")
+
     @app.cli.command("set-admin")
     def set_admin() -> None:
-        """用法: flask --app wsgi set-admin  （然后按提示输入邮箱）或 SET_ADMIN_EMAIL=... flask --app wsgi set-admin"""
+        """用法: SET_ADMIN_EMAIL=you@example.com flask --app wsgi set-admin"""
         import click
 
         from app.models import User

@@ -6,6 +6,7 @@ from flask import g, jsonify, request
 
 from app.api import api_bp
 from app.extensions import db
+from app.httputil import client_ip
 from app.models import AuditLog, Device, utcnow
 from app.security import generate_binding_key, require_web_auth, verify_password
 from app.tokens import consume_email_code, send_sensitive_email
@@ -13,7 +14,7 @@ from app.vault_storage import delete_vault
 
 
 def _audit(action: str, detail: str = "") -> None:
-    db.session.add(AuditLog(user_id=g.user.id, action=action, detail=detail, ip=(request.remote_addr or "")[:64]))
+    db.session.add(AuditLog(user_id=g.user.id, action=action, detail=detail, ip=client_ip()))
 
 
 @api_bp.get("/me")

@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 from datetime import date
 
 from email_validator import EmailNotValidError, validate_email
 from flask import current_app, g, jsonify, request
+from sqlalchemy import select, update
 
 from app.api import api_bp
 from app.extensions import db
+from app.httputil import client_ip
 from app.models import AuditLog, Device, SyncEvent, User, utcnow
 from app.security import hash_token, issue_device_token, require_device_auth, verify_password
 from app.tokens import consume_email_code, send_device_bind_email
-from app.vault_storage import read_vault, write_vault
+from app.vault_storage import read_vault, vault_path
 
 
 def _normalize_email(raw: str) -> str:
@@ -19,7 +22,7 @@ def _normalize_email(raw: str) -> str:
 
 
 def _audit(user: User, action: str, detail: str = "") -> None:
-    db.session.add(AuditLog(user_id=user.id, action=action, detail=detail, ip=(request.remote_addr or "")[:64]))
+    db.session.add(AuditLog(user_id=user.id, action=action, detail=detail, ip=client_ip()))
 
 
 def _bump_sync_stat(user: User) -> None:
@@ -130,22 +133,11 @@ def download_vault():
 @api_bp.put("/sync/vault")
 @require_device_auth
 def upload_vault():
-    user = g.user
     data = request.get_json(silent=True) or {}
     try:
         base_version = int(data.get("baseVersion"))
     except (TypeError, ValueError):
         return jsonify({"error": "缺少 baseVersion"}), 400
-
-    if base_version != user.vault_version:
-        return jsonify(
-            {
-                "error": "版本冲突",
-                "conflict": True,
-                "vaultVersion": user.vault_version,
-                "serverTime": utcnow().isoformat(),
-            }
-        ), 409
 
     raw_b64 = data.get("dataBase64") or ""
     try:
@@ -157,13 +149,56 @@ def upload_vault():
     if len(raw) == 0 or len(raw) > max_bytes:
         return jsonify({"error": f"保险库大小必须在 1 到 {max_bytes} 字节之间"}), 400
 
-    digest = write_vault(user, raw)
-    user.vault_version += 1
-    user.vault_size_bytes = len(raw)
-    user.vault_sha256 = digest
+    # 行锁 + 条件更新；文件先写临时再在版本更新成功后原子替换，避免并发覆盖
+    user = db.session.execute(
+        select(User).where(User.id == g.user.id).with_for_update()
+    ).scalar_one()
+
+    if base_version != user.vault_version:
+        return jsonify(
+            {
+                "error": "版本冲突",
+                "conflict": True,
+                "vaultVersion": user.vault_version,
+                "serverTime": utcnow().isoformat(),
+            }
+        ), 409
+
+    digest = hashlib.sha256(raw).hexdigest()
+    path = vault_path(user)
+    tmp = path.with_suffix(path.suffix + f".{base_version}.tmp")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_bytes(raw)
+
+    next_version = base_version + 1
+    result = db.session.execute(
+        update(User)
+        .where(User.id == user.id, User.vault_version == base_version)
+        .values(vault_version=next_version, vault_size_bytes=len(raw), vault_sha256=digest)
+    )
+    if result.rowcount != 1:
+        try:
+            tmp.unlink(missing_ok=True)
+        except TypeError:
+            if tmp.exists():
+                tmp.unlink()
+        db.session.rollback()
+        fresh = db.session.get(User, user.id)
+        return jsonify(
+            {
+                "error": "版本冲突",
+                "conflict": True,
+                "vaultVersion": fresh.vault_version if fresh else base_version,
+                "serverTime": utcnow().isoformat(),
+            }
+        ), 409
+
+    tmp.replace(path)
+    db.session.refresh(user)
     _bump_sync_stat(user)
     _audit(user, "vault_upload", f"v{user.vault_version}")
     db.session.commit()
+    g.user = user
     return jsonify(
         {
             "ok": True,

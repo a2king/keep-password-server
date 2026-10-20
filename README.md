@@ -26,11 +26,18 @@ npm run dev
 
 生产构建输出到 `frontend/dist`，由 Caddy 提供静态文件。
 
+首次或空库可执行：
+
+```bash
+flask --app wsgi init-db
+```
+
 冒烟测试：
 
 ```bash
 cd backend
 python scripts/smoke_api.py
+# 等价：PYTHONPATH=. python scripts/smoke_api.py
 ```
 
 授予管理员：
@@ -39,6 +46,8 @@ python scripts/smoke_api.py
 set SET_ADMIN_EMAIL=you@example.com
 flask --app wsgi set-admin
 ```
+
+生产 Docker 入口会先 `python -m app.dbutil` 再以 `--preload` 启动 gunicorn，避免多 worker 竞态建表。在反向代理后请设置 `TRUST_PROXY=true`。
 
 ## 已实现 API（阶段 2）
 
