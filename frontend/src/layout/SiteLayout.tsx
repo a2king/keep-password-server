@@ -50,6 +50,9 @@ export function SiteLayout() {
             <>
               <NavLink to="/account">个人中心</NavLink>
               {me.isAdmin && <NavLink to="/admin">管理后台</NavLink>}
+              <a href="#logout" onClick={(e) => { e.preventDefault(); logout(); }}>
+                退出
+              </a>
             </>
           ) : (
             <>
