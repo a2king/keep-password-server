@@ -24,22 +24,29 @@ export function HomePage() {
   return (
     <>
       <section className="kp-hero">
-        <div className="kp-brand" style={{ fontSize: "1.4rem" }}>
-          Keep Password
-        </div>
-        <h1>开发与运维的本地密码库</h1>
-        <p className="lead">
-          网站、服务器、数据库与 SSH 密钥加密保存在本机。需要时再开启零知识网络同步，数据仍然只有你能解开。
-        </p>
-        <div className="kp-hero-actions">
-          <Link to="/download">
-            <Button type="primary" size="large">
-              下载客户端
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button size="large">注册同步账号</Button>
-          </Link>
+        <div className="kp-hero__inner">
+          <div className="kp-hero__copy">
+            <div className="kp-brand" style={{ fontSize: "1.4rem" }}>
+              Keep Password
+            </div>
+            <h1>开发与运维的本地密码库</h1>
+            <p className="lead">
+              网站、服务器、数据库与 SSH 密钥加密保存在本机。需要时再开启零知识网络同步，数据仍然只有你能解开。
+            </p>
+            <div className="kp-hero-actions">
+              <Link to="/download">
+                <Button type="primary" size="large">
+                  下载客户端
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button size="large">注册同步账号</Button>
+              </Link>
+            </div>
+          </div>
+          <div className="kp-hero__media">
+            <img src="/hero.png" alt="Keep Password 客户端界面" width="100%" />
+          </div>
         </div>
       </section>
 
