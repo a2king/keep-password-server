@@ -1,0 +1,68 @@
+# Keep Password Server
+
+版本 **v0.1.0**。Keep Password 官网与云同步后台：Flask API + React 前端，Docker Compose + Caddy 部署。
+
+## 本地开发（API）
+
+```bash
+cd backend
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+source .venv/bin/activate
+pip install -r requirements.txt
+copy .env.example .env   # 或 cp
+flask --app wsgi run --debug --port 5000
+```
+
+## 本地开发（官网前端）
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+开发服务器：`http://127.0.0.1:5173`（`/api` 代理到 Flask `:5000`）。
+
+生产构建输出到 `frontend/dist`，由 Caddy 提供静态文件。
+
+冒烟测试：
+
+```bash
+cd backend
+python scripts/smoke_api.py
+```
+
+授予管理员：
+
+```bash
+set SET_ADMIN_EMAIL=you@example.com
+flask --app wsgi set-admin
+```
+
+## 已实现 API（阶段 2）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/auth/register` | 注册 |
+| POST | `/api/auth/verify-email` | 邮箱验证并下载绑定密钥 |
+| POST | `/api/auth/login` | 登录（失败限速 + 验证码） |
+| POST | `/api/auth/forgot-password` / `reset-password` | 重置密码 |
+| GET | `/api/me` | 个人中心 |
+| POST | `/api/me/devices/:id/revoke` | 解绑设备 |
+| POST | `/api/me/binding-key/regenerate` | 重新生成绑定密钥 |
+| POST | `/api/me/delete` | 注销账号 |
+| POST | `/api/sync/device/bind` | 设备绑定 |
+| GET/PUT | `/api/sync/vault` | 下载/上传加密保险库（版本冲突 409） |
+| GET/PUT | `/api/sync/wrapped-key` | 官网密码包裹的 `.kpkey` |
+| GET | `/api/admin/overview` | 管理看板数据 |
+
+服务器只存加密 blob，无法解密保险库内容。
+
+## 部署
+
+配置 `backend/.env` 与 `DOMAIN` 后：
+
+```bash
+docker compose up -d --build
+```
