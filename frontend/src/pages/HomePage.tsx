@@ -1,42 +1,85 @@
+import { useState } from "react";
 import { Button } from "antd";
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "motion/react";
 
 const features = [
   {
-    title: "本地加密优先",
-    body: "AES-256-GCM + Argon2id，保险库与密钥默认只在你的电脑上。",
+    title: "本地加密",
+    body: "AES-256，数据不出本机",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    ),
   },
   {
-    title: "面向运维的条目",
-    body: "登录、服务器、数据库、SSH 密钥、API 凭据与集群节点，一处管理。",
+    title: "运维条目",
+    body: "服务器、数据库、SSH 一处管",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="6" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <rect x="3" y="14" width="18" height="6" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <circle cx="7" cy="7" r="0.8" fill="currentColor" />
+        <circle cx="7" cy="17" r="0.8" fill="currentColor" />
+      </svg>
+    ),
   },
   {
     title: "零知识同步",
-    body: "可选云同步只上传密文；服务器看不到密码，也无法解开 .kpkey。",
+    body: "只上传密文，服务端解不开",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 18h10a4 4 0 0 0 .4-8 6 6 0 0 0-11.5-1.6A3.5 3.5 0 0 0 7 18z" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M12 11v4M10.5 13.5 12 15l1.5-1.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
   },
   {
-    title: "跨平台桌面端",
-    body: "Windows / macOS / Linux 同一套客户端，换电脑拷贝保险库即可。",
+    title: "安全审计",
+    body: "弱密码与泄露检查",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3 5 6v6c0 4.2 2.8 7.2 7 8.5 4.2-1.3 7-4.3 7-8.5V6l-7-3z" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
   },
 ];
 
+function reveal(reduce: boolean | null) {
+  if (reduce) {
+    return {
+      initial: { opacity: 1 },
+      animate: { opacity: 1 },
+      transition: { duration: 0 },
+    };
+  }
+  return {
+    initial: { opacity: 0, y: 20 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, amount: 0.25 },
+    transition: { duration: 0.5, ease: "easeOut" as const },
+  };
+}
+
 export function HomePage() {
+  const reduce = useReducedMotion();
+  const [videoOk, setVideoOk] = useState(true);
+
   return (
     <>
-      <section className="kp-hero">
+      <motion.section className="kp-hero" {...reveal(reduce)}>
         <div className="kp-hero__inner">
           <div className="kp-hero__copy">
-            <div className="kp-brand" style={{ fontSize: "1.4rem" }}>
-              Keep Password
-            </div>
+            <p className="kp-eyebrow">开源 · 本地加密 · 零知识同步</p>
             <h1>
               开发与运维的
               <br />
-              <span style={{ whiteSpace: "nowrap" }}>本地密码库</span>
+              <span className="kp-nowrap">本地密码库</span>
             </h1>
-            <p className="lead">
-              网站、服务器、数据库与 SSH 密钥加密保存在本机。需要时再开启零知识网络同步，数据仍然只有你能解开。
-            </p>
+            <p className="lead">网站、服务器、数据库、SSH 密钥，全部加密存在你自己的电脑上</p>
             <div className="kp-hero-actions">
               <Link to="/download">
                 <Button type="primary" size="large">
@@ -49,23 +92,46 @@ export function HomePage() {
             </div>
           </div>
           <div className="kp-hero__media">
-            <img src="/hero.png" alt="Keep Password 客户端界面" width="100%" />
+            <div className="kp-hero__tilt">
+              {videoOk ? (
+                <video
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  poster="/hero.webp"
+                  width={1024}
+                  height={602}
+                  onError={() => setVideoOk(false)}
+                >
+                  <source src="/demo.webm" type="video/webm" />
+                </video>
+              ) : (
+                <picture>
+                  <source srcSet="/hero.webp" type="image/webp" />
+                  <img src="/hero.png" alt="Keep Password 客户端界面" width={1408} height={964} />
+                </picture>
+              )}
+            </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="kp-section">
+      <motion.section className="kp-section" {...reveal(reduce)}>
         <h2>为什么选它</h2>
-        <p className="sub">少一层云厂商信任，多一份本机掌控。同步是增强，不是前提。</p>
         <div className="kp-feature-grid">
           {features.map((item) => (
-            <article key={item.title} className="kp-feature">
+            <article key={item.title} className="kp-feature-card">
+              <div className="kp-feature-icon">{item.icon}</div>
               <h3>{item.title}</h3>
               <p>{item.body}</p>
             </article>
           ))}
         </div>
-      </section>
+        <Link className="kp-more" to="/security">
+          了解安全设计 →
+        </Link>
+      </motion.section>
     </>
   );
 }
