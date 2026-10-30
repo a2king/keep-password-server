@@ -70,8 +70,20 @@ flask --app wsgi set-admin
 
 ## 部署
 
-配置 `backend/.env` 与 `DOMAIN` 后：
+域名只改 `deploy/domains.env`（由 `deploy/domains.env.example` 复制）。Caddy 和 API 都会读这一份。
+
+当前约定：
+
+- 官网：`www.keep-password.work`，裸域跳到 www
+- 客户端：`https://api.keep-password.work`（不要加 `/api`，路径里已经有）
+- 过渡期把旧主机追加到 `SITE_HOSTS` / `API_HOSTS`，两个域名同时可用
+- 收尾时把 `REDIRECT_TO_CANONICAL=true`，旧官网跳到 `CANONICAL_HOST`。API 主机不跳转，旧客户端还能连
+
+`backend/.env` 里的密钥、数据库和 SMTP 照旧。生产环境 `domains.env` 会把 `TRUST_PROXY` 和 `PUBLIC_BASE_URL` 盖掉。
 
 ```bash
+copy deploy\domains.env.example deploy\domains.env
 docker compose up -d --build
 ```
+
+客户端默认地址在 `SyncDefaults.ProductionBaseUrls`，按同样的顺序排列。开发可用 `KEEP_PASSWORD_SYNC_URL` 或逗号分隔的 `KEEP_PASSWORD_SYNC_URLS` 覆盖。已经绑定过的设备仍用当时保存的地址。

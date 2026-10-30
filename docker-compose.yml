@@ -2,11 +2,15 @@ services:
   caddy:
     image: caddy:2.9-alpine
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "/etc/caddy/entrypoint.sh"]
+    env_file:
+      - path: ./deploy/domains.env
+        required: false
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/caddy-entrypoint.sh:/etc/caddy/entrypoint.sh:ro
       - caddy_data:/data
       - caddy_config:/config
       - ./frontend/dist:/srv/www:ro
@@ -20,6 +24,8 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
+      - path: ./deploy/domains.env
+        required: false
     volumes:
       - api_data:/app/data
     expose:

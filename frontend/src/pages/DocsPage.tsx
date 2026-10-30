@@ -19,6 +19,10 @@ const md = `# 使用文档
 
 Windows 上可安装浏览器扩展，配合短密钥确认后自动填充。macOS / Linux 的程序自动填充仍在完善中。
 
+- **Microsoft Edge（已上架）**：[商店页](https://microsoftedge.microsoft.com/addons/detail/lbkhkkkmnbhnnmimhadmjappokdfkpgd)（商店标识 \`0RDCKGQT5LVS\`，CRX ID \`lbkhkkkmnbhnnmimhadmjappokdfkpgd\`）。当前为**私有**扩展，需连接后才能打开安装。
+- 客户端「设置 → 浏览器扩展」也可打开同一商店页。
+- 安装后仍需按扩展目录中的说明，注册 Native Messaging 宿主并与桌面端配对。
+
 ## 密钥说明
 
 - \`.kpkey\`：保险库数据密钥，丢失则无法解密。

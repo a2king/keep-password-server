@@ -86,6 +86,13 @@ export function HomePage() {
                   下载客户端
                 </Button>
               </Link>
+              <a
+                href="https://microsoftedge.microsoft.com/addons/detail/lbkhkkkmnbhnnmimhadmjappokdfkpgd"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Button size="large">Edge 扩展</Button>
+              </a>
               <Link to="/register">
                 <Button size="large">注册同步账号</Button>
               </Link>
