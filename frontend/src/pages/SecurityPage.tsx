@@ -26,8 +26,10 @@ const md = `# 安全设计
 export function SecurityPage() {
   return (
     <div className="kp-page">
-      <div className="kp-markdown">
-        <ReactMarkdown>{md}</ReactMarkdown>
+      <div className="kp-card-panel">
+        <div className="kp-markdown">
+          <ReactMarkdown>{md}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );

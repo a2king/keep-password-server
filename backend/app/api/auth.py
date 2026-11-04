@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import timedelta
 
@@ -11,7 +12,7 @@ from app.captcha import create_captcha, verify_captcha
 from app.extensions import db
 from app.httputil import client_ip
 from app.mail import send_mail
-from app.models import AuditLog, LoginFailure, User, utcnow
+from app.models import AuditLog, AuthThrottle, Device, LoginFailure, User, utcnow
 from app.security import generate_binding_key, hash_password, issue_web_token, verify_password
 from app.tokens import consume_email_code, send_reset_email, send_verify_email
 
@@ -27,9 +28,33 @@ def _normalize_email(raw: str) -> str:
     return info.normalized.lower()
 
 
+def _email_hash(email: str) -> str:
+    return hashlib.sha256(email.encode("utf-8")).hexdigest()
+
+
 def _recent_failures(email: str) -> int:
     since = utcnow() - timedelta(seconds=current_app.config["LOGIN_FAIL_WINDOW_SECONDS"])
     return LoginFailure.query.filter(LoginFailure.email == email, LoginFailure.created_at >= since).count()
+
+
+def _throttle_hit(bucket_key: str, action: str) -> bool:
+    """True 表示已超限。限制：同 key 每分钟 1 次、每小时 5 次。"""
+    now = utcnow()
+    per_min = int(current_app.config.get("FORGOT_RATE_PER_MINUTE", 1))
+    per_hour = int(current_app.config.get("FORGOT_RATE_PER_HOUR", 5))
+    since_min = now - timedelta(minutes=1)
+    since_hour = now - timedelta(hours=1)
+    q = AuthThrottle.query.filter_by(bucket_key=bucket_key, action=action)
+    if q.filter(AuthThrottle.created_at >= since_min).count() >= per_min:
+        return True
+    if q.filter(AuthThrottle.created_at >= since_hour).count() >= per_hour:
+        return True
+    return False
+
+
+def _throttle_record(bucket_key: str, action: str) -> None:
+    db.session.add(AuthThrottle(bucket_key=bucket_key, action=action, ip=client_ip()))
+    db.session.commit()
 
 
 def _binding_file(email: str, raw_key: str, fingerprint: str) -> tuple[str, str]:
@@ -47,6 +72,14 @@ def _binding_file(email: str, raw_key: str, fingerprint: str) -> tuple[str, str]
         indent=2,
     ) + "\n"
     return filename, content
+
+
+def _revoke_user_devices(user: User) -> int:
+    now = utcnow()
+    rows = Device.query.filter_by(user_id=user.id, revoked_at=None).all()
+    for d in rows:
+        d.revoked_at = now
+    return len(rows)
 
 
 @api_bp.get("/health")
@@ -182,27 +215,39 @@ def login():
     )
 
 
-@api_bp.post("/auth/forgot-password")
-def forgot_password():
-    data = request.get_json(silent=True) or {}
+_FORGOT_OK = {"ok": True, "message": "如果该邮箱已注册，将收到验证码"}
+
+
+def _do_forgot(data: dict):
     try:
         email = _normalize_email(data.get("email", ""))
     except EmailNotValidError:
         return jsonify({"error": "邮箱格式不正确"}), 400
+
+    email_key = "email:" + _email_hash(email)
+    ip_key = "ip:" + (client_ip() or "unknown")
+    if _throttle_hit(email_key, "forgot") or _throttle_hit(ip_key, "forgot"):
+        # 仍返回同一文案，避免枚举；不发信
+        return jsonify(_FORGOT_OK)
+
+    _throttle_record(email_key, "forgot")
+    _throttle_record(ip_key, "forgot")
+
     user = User.query.filter_by(email=email).first()
-    if user and user.is_verified:
+    if user and user.is_verified and not user.is_disabled:
         send_reset_email(user)
-    return jsonify({"ok": True, "message": "如果邮箱已注册，将收到重置验证码"})
+        _audit(user, "forgot_password")
+        db.session.commit()
+    return jsonify(_FORGOT_OK)
 
 
-@api_bp.post("/auth/reset-password")
-def reset_password():
-    data = request.get_json(silent=True) or {}
+def _do_reset(data: dict):
     try:
         email = _normalize_email(data.get("email", ""))
     except EmailNotValidError:
         return jsonify({"error": "邮箱格式不正确"}), 400
-    password = data.get("password") or ""
+
+    password = data.get("newPassword") or data.get("password") or ""
     if len(password) < current_app.config["PASSWORD_MIN_LENGTH"]:
         return jsonify({"error": f"密码至少 {current_app.config['PASSWORD_MIN_LENGTH']} 位"}), 400
 
@@ -214,11 +259,35 @@ def reset_password():
     user.password_hash = hash_password(password)
     user.wrapped_kpkey = None
     user.wrapped_kpkey_updated_at = None
-    _audit(user, "reset_password")
+    revoked = _revoke_user_devices(user)
+    _audit(user, "reset_password", f"revoked_devices={revoked}")
     db.session.commit()
     send_mail(
         user.email,
         "Keep Password 密码已重置",
-        "账号密码已重置。云端加密的保险库密钥包已清除，请在已绑定设备上用新密码重新上传，或在新设备手动导入 .kpkey。",
+        "账号密码已重置（仅网站登录）。云端加密的保险库密钥包已清除，"
+        "已绑定设备会话已作废。本地保险库主密码不受影响。"
+        "请在已绑定设备上用新密码重新上传，或在新设备手动导入 .kpkey。",
     )
-    return jsonify({"ok": True, "token": issue_web_token(user)})
+    return jsonify({"ok": True})
+
+
+@api_bp.post("/auth/forgot")
+def forgot():
+    return _do_forgot(request.get_json(silent=True) or {})
+
+
+@api_bp.post("/auth/reset")
+def reset():
+    return _do_reset(request.get_json(silent=True) or {})
+
+
+# 兼容旧路径
+@api_bp.post("/auth/forgot-password")
+def forgot_password():
+    return _do_forgot(request.get_json(silent=True) or {})
+
+
+@api_bp.post("/auth/reset-password")
+def reset_password():
+    return _do_reset(request.get_json(silent=True) or {})

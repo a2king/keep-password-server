@@ -76,6 +76,18 @@ export async function verifyEmail(email: string, code: string) {
   };
 }
 
+/** 忘记密码：恒成功文案；有账号才发信（后端） */
+export async function forgotPassword(email: string) {
+  const { data } = await api.post("/auth/forgot", { email });
+  return data as { ok: boolean; message?: string };
+}
+
+/** 用 6 位码重置网站登录密码 */
+export async function resetPassword(email: string, code: string, newPassword: string) {
+  const { data } = await api.post("/auth/reset", { email, code, newPassword });
+  return data as { ok: boolean };
+}
+
 export async function fetchMe() {
   const { data } = await api.get<MeResponse>("/me");
   return data;

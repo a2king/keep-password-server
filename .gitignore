@@ -10,3 +10,4 @@ frontend/dist/
 *.tsbuildinfo
 *.db
 .DS_Store
+_codex/*

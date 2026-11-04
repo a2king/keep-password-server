@@ -48,7 +48,7 @@ const features = [
   },
 ];
 
-function reveal(reduce: boolean | null) {
+function reveal(reduce: boolean | null, opts?: { aboveFold?: boolean }) {
   if (reduce) {
     return {
       initial: { opacity: 1 },
@@ -56,10 +56,19 @@ function reveal(reduce: boolean | null) {
       transition: { duration: 0 },
     };
   }
+  // Above-the-fold must use animate: whileInView often never fires and leaves opacity 0
+  // which looks like white/washed-out text on the light background.
+  if (opts?.aboveFold) {
+    return {
+      initial: { opacity: 1, y: 12 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: 0.4, ease: "easeOut" as const },
+    };
+  }
   return {
     initial: { opacity: 0, y: 20 },
     whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true, amount: 0.25 },
+    viewport: { once: true, amount: 0.2 },
     transition: { duration: 0.5, ease: "easeOut" as const },
   };
 }
@@ -70,7 +79,7 @@ export function HomePage() {
 
   return (
     <>
-      <motion.section className="kp-hero" {...reveal(reduce)}>
+      <motion.section className="kp-hero" {...reveal(reduce, { aboveFold: true })}>
         <div className="kp-hero__inner">
           <div className="kp-hero__copy">
             <p className="kp-eyebrow">开源 · 本地加密 · 零知识同步</p>
@@ -100,25 +109,27 @@ export function HomePage() {
           </div>
           <div className="kp-hero__media">
             <div className="kp-hero__tilt">
-              {videoOk ? (
-                <video
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  poster="/hero.webp"
-                  width={1024}
-                  height={602}
-                  onError={() => setVideoOk(false)}
-                >
-                  <source src="/demo.webm" type="video/webm" />
-                </video>
-              ) : (
-                <picture>
-                  <source srcSet="/hero.webp" type="image/webp" />
-                  <img src="/hero.png" alt="Keep Password 客户端界面" width={1408} height={964} />
-                </picture>
-              )}
+              <div className="kp-hero__card">
+                {videoOk ? (
+                  <video
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    poster="/hero.webp"
+                    width={1024}
+                    height={602}
+                    onError={() => setVideoOk(false)}
+                  >
+                    <source src="/demo.webm" type="video/webm" />
+                  </video>
+                ) : (
+                  <picture>
+                    <source srcSet="/hero.webp" type="image/webp" />
+                    <img src="/hero.png" alt="Keep Password 客户端界面" width={1408} height={964} />
+                  </picture>
+                )}
+              </div>
             </div>
           </div>
         </div>

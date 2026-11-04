@@ -12,19 +12,33 @@ from app.security import hash_token
 
 
 def _make_code(length: int = 8) -> str:
-    # 去掉易混淆字符
+    # 去掉易混淆字符（注册验证 / 设备绑定）
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def issue_email_code(user: User, purpose: str, ttl_minutes: int = 30) -> str:
+def _make_digit_code(length: int = 6) -> str:
+    return "".join(secrets.choice("0123456789") for _ in range(length))
+
+
+def issue_email_code(
+    user: User,
+    purpose: str,
+    ttl_minutes: int = 30,
+    *,
+    digits: bool = False,
+    length: int | None = None,
+) -> str:
     # 使同用途旧码失效，避免多码并行被刷
     now = utcnow()
     EmailToken.query.filter_by(user_id=user.id, purpose=purpose, used_at=None).update(
         {"used_at": now},
         synchronize_session=False,
     )
-    code = _make_code(8)
+    if digits:
+        code = _make_digit_code(length or 6)
+    else:
+        code = _make_code(length or 8)
     token = EmailToken(
         user_id=user.id,
         purpose=purpose,
@@ -62,8 +76,10 @@ def consume_email_code(user: User, purpose: str, code: str) -> bool:
         db.session.commit()
         return False
 
-    target = hash_token((code or "").strip().upper())
-    if row.code_hash == target:
+    raw = (code or "").strip()
+    # 数字 OTP 不做 upper；字母数字码保持 upper 兼容
+    candidates = [hash_token(raw), hash_token(raw.upper())]
+    if row.code_hash in candidates:
         row.used_at = now
         db.session.commit()
         return True
@@ -85,11 +101,16 @@ def send_verify_email(user: User) -> None:
 
 
 def send_reset_email(user: User) -> None:
-    code = issue_email_code(user, "reset", ttl_minutes=30)
+    # 官网忘记密码：6 位数字，15 分钟
+    code = issue_email_code(user, "reset", ttl_minutes=15, digits=True, length=6)
     send_mail(
         user.email,
         "重置 Keep Password 账号密码",
-        f"你的重置验证码是：{code}\n\n三十分钟内有效。如果不是你本人操作，请忽略本邮件。",
+        (
+            f"你的重置验证码是：{code}\n\n"
+            "十五分钟内有效，仅用于重置网站登录密码，不影响本地保险库主密码。"
+            "\n如果不是你本人操作，请忽略本邮件。"
+        ),
     )
 
 

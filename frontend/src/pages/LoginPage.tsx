@@ -69,6 +69,9 @@ export function LoginPage() {
               </Form.Item>
             </>
           )}
+          <div style={{ textAlign: "right", marginBottom: 16 }}>
+            <Link to="/forgot">忘记密码</Link>
+          </div>
           <Button type="primary" htmlType="submit" loading={loading} block>
             登录
           </Button>

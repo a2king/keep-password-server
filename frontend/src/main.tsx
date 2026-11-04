@@ -12,10 +12,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       locale={zhCN}
       button={{ autoInsertSpace: false }}
       theme={{
-        algorithm: theme.darkAlgorithm,
+        algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: "#3ee0a0",
-          colorBgBase: "#0f1218",
+          colorPrimary: "#1A1A1A",
+          colorBgBase: "#F7F7F5",
+          colorBgContainer: "#FFFFFF",
+          colorBorder: "#E8E8E6",
+          colorText: "#1A1A1A",
+          colorTextSecondary: "#5A5A58",
           fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
           borderRadius: 10,
         },

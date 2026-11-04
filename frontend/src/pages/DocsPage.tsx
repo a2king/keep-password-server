@@ -32,8 +32,10 @@ Windows 上可安装浏览器扩展，配合短密钥确认后自动填充。mac
 export function DocsPage() {
   return (
     <div className="kp-page">
-      <div className="kp-markdown">
-        <ReactMarkdown>{md}</ReactMarkdown>
+      <div className="kp-card-panel">
+        <div className="kp-markdown">
+          <ReactMarkdown>{md}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );

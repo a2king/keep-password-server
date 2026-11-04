@@ -115,3 +115,15 @@ class AuditLog(db.Model):
     detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
     ip: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+class AuthThrottle(db.Model):
+    """忘记密码等敏感操作的简易限流桶（email hash / IP）。"""
+
+    __tablename__ = "auth_throttles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bucket_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    ip: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+

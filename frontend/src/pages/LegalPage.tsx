@@ -22,8 +22,10 @@ const md = `# 隐私政策与服务条款
 export function LegalPage() {
   return (
     <div className="kp-page">
-      <div className="kp-markdown">
-        <ReactMarkdown>{md}</ReactMarkdown>
+      <div className="kp-card-panel">
+        <div className="kp-markdown">
+          <ReactMarkdown>{md}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );
