@@ -89,3 +89,8 @@ class Config:
     EMAIL_CODE_MAX_ATTEMPTS = int(os.environ.get("EMAIL_CODE_MAX_ATTEMPTS", "5"))
     FORGOT_RATE_PER_MINUTE = int(os.environ.get("FORGOT_RATE_PER_MINUTE", "1"))
     FORGOT_RATE_PER_HOUR = int(os.environ.get("FORGOT_RATE_PER_HOUR", "5"))
+    # 非秘密：Edge 加载项详情 URL。只给后端 302 用，不要写进前端源码。
+    EDGE_STORE_URL = os.environ.get(
+        "EDGE_STORE_URL",
+        "https://microsoftedge.microsoft.com/addons/detail/lbkhkkkmnbhnnmimhadmjappokdfkpgd",
+    )

@@ -116,4 +116,6 @@ cd frontend && npm ci && npm run build && cd ..
 docker compose up -d --build
 ```
 
+官网 Edge 扩展按钮指向同源 `/api/edge-store`（Caddy 已反代 `/api/*`），由应用 302 到 `EDGE_STORE_URL`。该值是非秘密的商店详情 URL，默认已写在后端配置；前端 JS/文档不含扩展 ID。
+
 客户端默认地址在 `SyncDefaults.ProductionBaseUrls`，按同样的顺序排列。开发可用 `KEEP_PASSWORD_SYNC_URL` 或逗号分隔的 `KEEP_PASSWORD_SYNC_URLS` 覆盖。已经绑定过的设备仍用当时保存的地址。
