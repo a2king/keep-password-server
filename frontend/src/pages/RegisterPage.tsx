@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Form, Input, Steps, Typography, message } from "antd";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { downloadTextFile, register, verifyEmail } from "../api";
+import { downloadTextFile, register, resendVerify, verifyEmail } from "../api";
 import { useAuth } from "../auth";
 
 export function RegisterPage() {
@@ -13,6 +13,7 @@ export function RegisterPage() {
   const [step, setStep] = useState(initialStep);
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const onRegister = async (values: { email: string; password: string; confirm: string }) => {
     if (values.password !== values.confirm) {
@@ -24,12 +25,33 @@ export function RegisterPage() {
       await register(values.email, values.password);
       setEmail(values.email);
       setStep(1);
-      message.success("验证码已发送（开发环境见服务器控制台）");
+      message.success("验证码已发送，请查收邮箱");
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "注册失败");
+      const data = (err as { response?: { data?: { error?: string; needVerify?: boolean } } })?.response?.data;
+      if (data?.needVerify) {
+        setEmail(values.email);
+        setStep(1);
+      }
+      message.error(data?.error || "注册失败");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onResend = async () => {
+    if (!email) {
+      message.warning("请先填写邮箱");
+      return;
+    }
+    setResending(true);
+    try {
+      await resendVerify(email);
+      message.success("验证码已发送，请查收邮箱");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      message.error(msg || "发送失败");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -84,13 +106,16 @@ export function RegisterPage() {
         {step === 1 && (
           <Form layout="vertical" onFinish={onVerify} requiredMark={false}>
             <Typography.Paragraph>
-              验证码已发送到 <strong>{email}</strong>
+              请查收发送到 <strong>{email}</strong> 的验证码。若未收到，可重新发送。
             </Typography.Paragraph>
             <Form.Item name="code" label="验证码" rules={[{ required: true, min: 8, max: 8, message: "请输入 8 位验证码" }]}>
               <Input maxLength={8} style={{ textTransform: "uppercase" }} />
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>
               验证并下载绑定密钥
+            </Button>
+            <Button style={{ marginTop: 12 }} onClick={onResend} loading={resending} block>
+              重新发送验证码
             </Button>
           </Form>
         )}

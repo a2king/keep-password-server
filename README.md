@@ -24,7 +24,7 @@ npm run dev
 
 开发服务器：`http://127.0.0.1:5173`（`/api` 代理到 Flask `:5000`）。
 
-生产构建输出到 `frontend/dist`，由 Caddy 提供静态文件。
+生产构建输出到 `frontend/dist`，由 Caddy 提供静态文件。构建时会扫描 `frontend/public/changelog/*.md` 生成更新日志索引。
 
 首次或空库可执行：
 
@@ -32,12 +32,13 @@ npm run dev
 flask --app wsgi init-db
 ```
 
-冒烟测试：
+测试：
 
 ```bash
 cd backend
 python scripts/smoke_api.py
 # 等价：PYTHONPATH=. python scripts/smoke_api.py
+python -m unittest tests.test_mail
 ```
 
 授予管理员：
@@ -68,6 +69,31 @@ flask --app wsgi set-admin
 
 服务器只存加密 blob，无法解密保险库内容。
 
+## 更新日志
+
+官网 `/changelog` 读取 `frontend/public/changelog/` 里的 Markdown，不调用 GitHub API。新增版本时加一个文件即可，步骤见 `docs/changelog.md`。完整客户端发布页：https://github.com/a2king/keep-password/releases
+
+## 邮件验证码（SMTP）
+
+源码和 `.env.example` **不包含**真实邮箱密码或授权码。未配置 `SMTP_HOST` 时，本地可开 `MAIL_DEV_CONSOLE=true`，验证码打印到控制台。
+
+生产请在服务器的 `backend/.env` 填写第三方邮箱 SMTP（可替代旧的阿里云 DirectMail）。仓库沿用 `SMTP_PORT=587` + `SMTP_USE_TLS=true`（STARTTLS），**不会按端口自动切换**；163 实际可用的端口/TLS 组合必须在服务器上实测。
+
+```
+SMTP_HOST=smtp.163.com
+SMTP_PORT=587
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
+SMTP_USERNAME=your_account@163.com
+SMTP_PASSWORD=          # 163 客户端授权码，不是登录密码，不要写入仓库
+SMTP_FROM=your_account@163.com
+MAIL_DEV_CONSOLE=false
+```
+
+若 587 不通，可改测 `SMTP_PORT=465`、`SMTP_USE_SSL=true`、`SMTP_USE_TLS=false`。只要设置了 `SMTP_HOST` 就会真实发信；失败返回 JSON 错误（HTTP 503），不会伪装成功。
+
+不要把服务器 SSH 密码写进本仓库。
+
 ## 部署
 
 域名只改 `deploy/domains.env`（由 `deploy/domains.env.example` 复制）。Caddy 和 API 都会读这一份。
@@ -79,10 +105,14 @@ flask --app wsgi set-admin
 - 过渡期把旧主机追加到 `SITE_HOSTS` / `API_HOSTS`，两个域名同时可用
 - 收尾时把 `REDIRECT_TO_CANONICAL=true`，旧官网跳到 `CANONICAL_HOST`。API 主机不跳转，旧客户端还能连
 
-`backend/.env` 里的密钥、数据库和 SMTP 照旧。生产环境 `domains.env` 会把 `TRUST_PROXY` 和 `PUBLIC_BASE_URL` 盖掉。
+`backend/.env` 里的密钥、数据库和 SMTP 只放在服务器上。生产环境 `domains.env` 会把 `TRUST_PROXY` 和 `PUBLIC_BASE_URL` 盖掉。
+
+同步到已有服务器（前端静态文件必须重新构建后再起 Caddy）：
 
 ```bash
-copy deploy\domains.env.example deploy\domains.env
+git pull
+cd frontend && npm ci && npm run build && cd ..
+# 确认 backend/.env 已有 SMTP_*（不要把授权码提交到 git）
 docker compose up -d --build
 ```
 

@@ -589,3 +589,58 @@ a {
 .ant-alert {
   border-radius: 10px;
 }
+
+.kp-changelog-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.kp-changelog-entry {
+  margin-bottom: 16px;
+}
+
+.kp-changelog-entry h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.kp-changelog-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.kp-changelog-title {
+  margin: 6px 0 0;
+  color: var(--kp-muted);
+}
+
+.kp-changelog-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--kp-muted);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.kp-changelog-source {
+  margin: 16px 0 0;
+  font-size: 0.85rem;
+  color: var(--kp-muted);
+}
+
+@media (max-width: 720px) {
+  .kp-changelog-head {
+    flex-direction: column;
+  }
+
+  .kp-changelog-meta {
+    align-items: flex-start;
+  }
+}
