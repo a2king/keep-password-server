@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import smtplib
+import ssl
 from email.message import EmailMessage
 
 from flask import current_app
@@ -17,7 +18,7 @@ class MailError(RuntimeError):
         self.public_message = public_message
 
 
-def _public_smtp_error(exc: BaseException) -> str:
+def _public_smtp_error(exc: Exception) -> str:
     if isinstance(exc, smtplib.SMTPAuthenticationError):
         return "邮件发送失败：SMTP 认证未通过。请检查发件账号与授权码（不是登录密码）。"
     if isinstance(exc, smtplib.SMTPConnectError):
@@ -71,21 +72,22 @@ def _send_smtp(to: str, subject: str, body: str, host: str) -> None:
     timeout = int(current_app.config.get("SMTP_TIMEOUT", 30))
 
     try:
+        tls_context = ssl.create_default_context()
         if use_ssl:
             if use_tls:
                 log.warning("SMTP_USE_SSL 与 SMTP_USE_TLS 同时开启，使用隐式 TLS，不再 STARTTLS")
-            client = smtplib.SMTP_SSL(host, port, timeout=timeout)
+            client = smtplib.SMTP_SSL(host, port, timeout=timeout, context=tls_context)
         else:
             client = smtplib.SMTP(host, port, timeout=timeout)
 
         with client as smtp:
             if (not use_ssl) and use_tls:
-                smtp.starttls()
+                smtp.starttls(context=tls_context)
             if username:
                 smtp.login(username, password)
             smtp.send_message(msg)
     except MailError:
         raise
-    except BaseException as exc:
+    except Exception as exc:
         log.exception("SMTP send failed host=%s port=%s to=%s", host, port, to)
         raise MailError(_public_smtp_error(exc), detail=str(exc)) from exc

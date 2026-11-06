@@ -12,11 +12,13 @@ from app.mail import MailError, send_mail
 
 
 class FakeSMTP:
-    def __init__(self, host, port, timeout=None):
+    def __init__(self, host, port, timeout=None, context=None):
         self.host = host
         self.port = port
         self.timeout = timeout
+        self.context = context
         self.started_tls = False
+        self.starttls_context = None
         self.login_args = None
         self.sent = None
 
@@ -26,8 +28,9 @@ class FakeSMTP:
     def __exit__(self, *args):
         return False
 
-    def starttls(self):
+    def starttls(self, context=None):
         self.started_tls = True
+        self.starttls_context = context
 
     def login(self, username, password):
         self.login_args = (username, password)
@@ -80,6 +83,7 @@ class MailTests(unittest.TestCase):
         ctor.assert_called_once()
         self.assertEqual(ctor.call_args.args[:2], ("smtp.163.com", 587))
         self.assertTrue(fake.started_tls)
+        self.assertIsNotNone(fake.starttls_context)
         self.assertEqual(fake.login_args, ("your_account@163.com", "not-a-real-secret"))
         self.assertEqual(fake.sent["To"], "user@example.com")
 
@@ -96,6 +100,8 @@ class MailTests(unittest.TestCase):
         ctor.assert_called_once()
         plain.assert_not_called()
         self.assertFalse(fake.started_tls)
+        self.assertIn("context", ctor.call_args.kwargs)
+        self.assertIsNotNone(ctor.call_args.kwargs["context"])
 
     def test_smtp_failure_is_mail_error(self):
         self.app.config["SMTP_HOST"] = "smtp.163.com"
@@ -110,6 +116,55 @@ class MailTests(unittest.TestCase):
                 with self.assertRaises(MailError) as ctx:
                     send_mail("user@example.com", "subj", "body")
         self.assertIn("认证未通过", ctx.exception.public_message)
+
+    def test_starttls_uses_default_ssl_context(self):
+        self.app.config["SMTP_HOST"] = "smtp.163.com"
+        ctx = object()
+        fake = FakeSMTP("smtp.163.com", 587, timeout=30)
+        with self.app.app_context():
+            with patch("app.mail.ssl.create_default_context", return_value=ctx):
+                with patch("app.mail.smtplib.SMTP", return_value=fake):
+                    send_mail("user@example.com", "subj", "body")
+        self.assertTrue(fake.started_tls)
+        self.assertIs(fake.starttls_context, ctx)
+
+    def test_smtp_ssl_uses_default_ssl_context(self):
+        self.app.config["SMTP_HOST"] = "smtp.163.com"
+        self.app.config["SMTP_PORT"] = 465
+        self.app.config["SMTP_USE_SSL"] = True
+        self.app.config["SMTP_USE_TLS"] = False
+        ctx = object()
+        fake = FakeSMTP("smtp.163.com", 465, timeout=30)
+        with self.app.app_context():
+            with patch("app.mail.ssl.create_default_context", return_value=ctx):
+                with patch("app.mail.smtplib.SMTP_SSL", return_value=fake) as ctor:
+                    send_mail("user@example.com", "subj", "body")
+        self.assertIs(ctor.call_args.kwargs.get("context"), ctx)
+        self.assertFalse(fake.started_tls)
+
+    def test_keyboard_interrupt_is_not_mail_error(self):
+        self.app.config["SMTP_HOST"] = "smtp.163.com"
+
+        class Boom(FakeSMTP):
+            def send_message(self, msg):
+                raise KeyboardInterrupt()
+
+        with self.app.app_context():
+            with patch("app.mail.smtplib.SMTP", return_value=Boom("smtp.163.com", 587)):
+                with self.assertRaises(KeyboardInterrupt):
+                    send_mail("user@example.com", "subj", "body")
+
+    def test_system_exit_is_not_mail_error(self):
+        self.app.config["SMTP_HOST"] = "smtp.163.com"
+
+        class Boom(FakeSMTP):
+            def send_message(self, msg):
+                raise SystemExit(1)
+
+        with self.app.app_context():
+            with patch("app.mail.smtplib.SMTP", return_value=Boom("smtp.163.com", 587)):
+                with self.assertRaises(SystemExit):
+                    send_mail("user@example.com", "subj", "body")
 
     def test_forgot_returns_503_when_mail_fails(self):
         client = self.app.test_client()
