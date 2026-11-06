@@ -14,8 +14,8 @@
 - 存储：复用现有 `email_tokens`（purpose=`reset`，码只存哈希）；另增 `auth_throttles` 限流表
 - 重置成功后作废设备会话（`devices.revoked_at`），清除云端 wrapped key
 
-## 未改（保留 Edge）
-- `HomePage` / `DownloadPage` / `DocsPage` 的 Edge 商店链接与私有上架说明
+## Edge
+- 保留商店按钮 / 链接；页面文案不再展示商店标识或 CRX ID
 
 ## SMTP
 - 仍走 `backend/app/mail.py` + 环境变量 `SMTP_*` / `MAIL_DEV_CONSOLE`

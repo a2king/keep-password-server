@@ -11,7 +11,7 @@ from app.api import api_bp
 from app.captcha import create_captcha, verify_captcha
 from app.extensions import db
 from app.httputil import client_ip
-from app.mail import send_mail
+from app.mail import MailError, send_mail
 from app.models import AuditLog, AuthThrottle, Device, LoginFailure, User, utcnow
 from app.security import generate_binding_key, hash_password, issue_web_token, verify_password
 from app.tokens import consume_email_code, send_reset_email, send_verify_email
@@ -112,7 +112,10 @@ def register():
     db.session.add(user)
     _audit(user, "register")
     db.session.commit()
-    send_verify_email(user)
+    try:
+        send_verify_email(user)
+    except MailError as exc:
+        return jsonify({"error": exc.public_message, "needVerify": True}), 503
     return jsonify({"ok": True, "message": "注册成功，请查收邮箱验证码"}), 201
 
 

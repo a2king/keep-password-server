@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "antd";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
+import { EDGE_STORE_URL } from "../site";
 
 const features = [
   {
@@ -95,11 +96,7 @@ export function HomePage() {
                   下载客户端
                 </Button>
               </Link>
-              <a
-                href="https://microsoftedge.microsoft.com/addons/detail/lbkhkkkmnbhnnmimhadmjappokdfkpgd"
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={EDGE_STORE_URL} target="_blank" rel="noreferrer">
                 <Button size="large">Edge 扩展</Button>
               </a>
               <Link to="/register">

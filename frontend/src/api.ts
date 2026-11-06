@@ -64,6 +64,11 @@ export async function register(email: string, password: string) {
   return data;
 }
 
+export async function resendVerify(email: string) {
+  const { data } = await api.post("/auth/resend-verify", { email });
+  return data as { ok: boolean };
+}
+
 export async function verifyEmail(email: string, code: string) {
   const { data } = await api.post("/auth/verify-email", { email, code });
   if (data.token) setToken(data.token);

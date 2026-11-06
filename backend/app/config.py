@@ -72,6 +72,8 @@ class Config:
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
     SMTP_FROM = os.environ.get("SMTP_FROM", "noreply@example.com")
     SMTP_USE_TLS = _env_bool("SMTP_USE_TLS", True)
+    SMTP_USE_SSL = _env_bool("SMTP_USE_SSL", False)
+    SMTP_TIMEOUT = int(os.environ.get("SMTP_TIMEOUT", "30"))
     MAIL_DEV_CONSOLE = _env_bool("MAIL_DEV_CONSOLE", True)
     # 仅在前面有可信反向代理（如 Caddy）时开启，才会读取 X-Forwarded-For
     TRUST_PROXY = _env_bool("TRUST_PROXY", False)

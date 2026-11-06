@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flask import Flask, send_from_directory
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
 from app.config import Config
@@ -33,8 +33,13 @@ def create_app(config_object: type = Config, *, init_db: bool = True) -> Flask:
     CORS(app, resources={r"/api/*": {"origins": origins}}, supports_credentials=cors_credentials)
 
     from app.api import api_bp
+    from app.mail import MailError
 
     app.register_blueprint(api_bp)
+
+    @app.errorhandler(MailError)
+    def handle_mail_error(err: MailError):
+        return jsonify({"error": err.public_message}), 503
 
     releases_root = Path(app.config["VAULT_STORAGE_DIR"]).parent / "releases"
     releases_root.mkdir(parents=True, exist_ok=True)
