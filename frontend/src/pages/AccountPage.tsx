@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Modal, Space, Table, Typography, message } from "antd";
+import { Link } from "react-router-dom";
 import { api, downloadTextFile } from "../api";
 import { useAuth } from "../auth";
 
@@ -41,7 +42,7 @@ export function AccountPage() {
       content: (
         <div>
           <Typography.Paragraph type="secondary">
-            旧绑定密钥立即失效；已绑定设备可继续同步。
+            这只更换设备绑定密钥。旧绑定密钥立即失效，已绑定设备可继续同步。不会修改网站密码，也不会更换保险库数据密钥。
           </Typography.Paragraph>
           <Button style={{ marginBottom: 12 }} onClick={() => void requestCode("regen_binding_key")}>
             发送验证码
@@ -101,12 +102,6 @@ export function AccountPage() {
           <br />
           密钥包：{me.hasWrappedKey ? "已上传" : "未上传"}
         </Typography.Paragraph>
-        <Typography.Paragraph>
-          网站登录密码、邮箱登录密码和保险库数据密钥是三件不同的东西。本页不接收 .kpkey，也不保存邮箱授权码。
-          修改网站密码会作废已绑定设备的会话，但不会更换或作废保险库数据密钥。
-          换钥必须在桌面客户端进行，而且只有能解开当前云端数据时才会提交；解密失败不会被当成空库。
-          解绑下面某一台设备是单独操作，不会自动换钥。
-        </Typography.Paragraph>
         <Space>
           <Button onClick={regenKey}>重新生成绑定密钥</Button>
           <Button danger loading={busy} onClick={deleteAccount}>
@@ -115,7 +110,34 @@ export function AccountPage() {
         </Space>
       </div>
 
+      <div className="kp-card-panel" style={{ marginBottom: 20 }}>
+        <Typography.Title level={4} style={{ marginTop: 0 }}>
+          若不是本人操作
+        </Typography.Title>
+        <Typography.Paragraph type="secondary">
+          下面三件事要分开做。改网站密码、解绑某一台设备、在客户端换钥，互不代替。
+        </Typography.Paragraph>
+        <Typography.Title level={5}>改网站密码</Typography.Title>
+        <Typography.Paragraph>
+          只更换网站登录密码，并作废当前已绑定设备的会话。云端密钥包还在，保险库数据密钥不会因此更换或作废。
+          这不是在设备列表里解绑某一台，也不是换钥。
+        </Typography.Paragraph>
+        <Link to="/forgot">去重置网站密码</Link>
+        <Typography.Title level={5}>解绑设备</Typography.Title>
+        <Typography.Paragraph>
+          在下方列表查看设备，并单独解绑不认识的那一台。解绑不会修改网站密码，也不会更换保险库数据密钥。
+        </Typography.Paragraph>
+        <Typography.Title level={5}>客户端换钥</Typography.Title>
+        <Typography.Paragraph style={{ marginBottom: 0 }}>
+          0.9.1 的数据合并和换钥只在桌面客户端进行。本页没有这项操作。
+          若确认是本人更换过密钥，请在客户端用新的密钥文件恢复同步。
+        </Typography.Paragraph>
+      </div>
+
       <Typography.Title level={4}>已绑定设备</Typography.Title>
+      <Typography.Paragraph type="secondary">
+        这里只查看和解绑设备。解绑不会改网站密码，也不会换钥。
+      </Typography.Paragraph>
       <Table
         rowKey="id"
         dataSource={me.devices}
