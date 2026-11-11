@@ -89,5 +89,6 @@ def _send_smtp(to: str, subject: str, body: str, host: str) -> None:
     except MailError:
         raise
     except Exception as exc:
-        log.exception("SMTP send failed host=%s port=%s to=%s", host, port, to)
-        raise MailError(_public_smtp_error(exc), detail=str(exc)) from exc
+        # 只记异常类型。不写授权码、登录口令，也不把服务器返回的原文放进日志。
+        log.warning("SMTP send failed host=%s port=%s error=%s", host, port, type(exc).__name__)
+        raise MailError(_public_smtp_error(exc)) from exc

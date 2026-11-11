@@ -11,7 +11,7 @@ export function AccountPage() {
 
   const requestCode = async (purpose: string) => {
     await api.post("/me/request-code", { purpose });
-    message.success("验证码已发送（开发环境见服务器控制台）");
+    message.success("服务器已接受发送。若邮箱没有收到，请稍后重试。");
   };
 
   const revokeDevice = (id: number) => {
@@ -97,9 +97,15 @@ export function AccountPage() {
         <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
           绑定密钥指纹：{me.bindingKeyFingerprint || "—"}
           <br />
-          云端保险库版本：{me.vaultVersion} · 大小 {me.vaultSizeBytes} 字节
+          云端保险库版本：{me.vaultVersion} · 密钥代 {me.keyVersion ?? 0} · 大小 {me.vaultSizeBytes} 字节
           <br />
           密钥包：{me.hasWrappedKey ? "已上传" : "未上传"}
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          网站登录密码、邮箱登录密码和保险库数据密钥是三件不同的东西。本页不接收 .kpkey，也不保存邮箱授权码。
+          修改网站密码会作废已绑定设备的会话，但不会更换或作废保险库数据密钥。
+          换钥必须在桌面客户端进行，而且只有能解开当前云端数据时才会提交；解密失败不会被当成空库。
+          解绑下面某一台设备是单独操作，不会自动换钥。
         </Typography.Paragraph>
         <Space>
           <Button onClick={regenKey}>重新生成绑定密钥</Button>

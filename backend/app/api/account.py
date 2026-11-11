@@ -33,6 +33,7 @@ def me():
             "vaultVersion": user.vault_version,
             "vaultSizeBytes": user.vault_size_bytes,
             "hasWrappedKey": user.wrapped_kpkey is not None,
+            "keyVersion": user.key_version,
             "devices": [
                 {
                     "id": d.id,
