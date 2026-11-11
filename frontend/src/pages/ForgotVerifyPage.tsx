@@ -51,7 +51,9 @@ export function ForgotVerifyPage() {
     <div className="kp-page" style={{ maxWidth: 480 }}>
       <h1>重置密码</h1>
       <Typography.Paragraph type="secondary">输入邮箱收到的 6 位验证码，并设置新的网站登录密码。</Typography.Paragraph>
-      <p className="kp-auth-hint">仅重置网站登录，不影响本地保险库主密码。</p>
+      <p className="kp-auth-hint">
+        这只重置网站登录密码，并会作废已绑定设备的会话。它不更换保险库数据密钥，也不是解绑某一台设备。换钥只在桌面客户端进行。
+      </p>
       <div className="kp-card-panel">
         <Form
           form={form}

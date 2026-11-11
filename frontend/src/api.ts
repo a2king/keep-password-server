@@ -32,6 +32,7 @@ export type MeResponse = {
   vaultVersion: number;
   vaultSizeBytes: number;
   hasWrappedKey: boolean;
+  keyVersion: number;
   devices: Array<{
     id: number;
     name: string;

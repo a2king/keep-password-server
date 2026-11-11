@@ -53,17 +53,35 @@ def ensure_schema(app) -> None:
 
 
 def _migrate_sqlite_columns() -> None:
-    """轻量补列：已有 SQLite 库不会因 create_all 自动加新字段。"""
+    """轻量补列：已有库不会因 create_all 自动加新字段。SQLite 与 PostgreSQL 都支持 ADD COLUMN。"""
     bind = db.engine
-    if bind.dialect.name != "sqlite":
+    if bind.dialect.name not in {"sqlite", "postgresql"}:
         return
+    _add_missing_columns(
+        "email_tokens",
+        [("attempts", "INTEGER NOT NULL DEFAULT 0")],
+    )
+    _add_missing_columns(
+        "users",
+        [
+            ("key_version", "INTEGER NOT NULL DEFAULT 0"),
+            ("wrapped_key_sha256", "VARCHAR(64)"),
+        ],
+    )
+
+
+def _add_missing_columns(table: str, columns: list[tuple[str, str]]) -> None:
+    bind = db.engine
     insp = inspect(bind)
-    if "email_tokens" not in insp.get_table_names():
+    if table not in insp.get_table_names():
         return
-    cols = {c["name"] for c in insp.get_columns("email_tokens")}
-    if "attempts" not in cols:
-        with bind.begin() as conn:
-            conn.execute(text("ALTER TABLE email_tokens ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0"))
+    existing = {column["name"] for column in insp.get_columns(table)}
+    missing = [(name, ddl) for name, ddl in columns if name not in existing]
+    if not missing:
+        return
+    with bind.begin() as conn:
+        for name, ddl in missing:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
 
 
 def init_db_main() -> int:

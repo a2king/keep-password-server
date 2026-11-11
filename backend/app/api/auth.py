@@ -260,17 +260,16 @@ def _do_reset(data: dict):
         return jsonify(invalid[0]), invalid[1]
 
     user.password_hash = hash_password(password)
-    user.wrapped_kpkey = None
-    user.wrapped_kpkey_updated_at = None
     revoked = _revoke_user_devices(user)
     _audit(user, "reset_password", f"revoked_devices={revoked}")
     db.session.commit()
     send_mail(
         user.email,
         "Keep Password 密码已重置",
-        "账号密码已重置（仅网站登录）。云端加密的保险库密钥包已清除，"
-        "已绑定设备会话已作废。本地保险库主密码不受影响。"
-        "请在已绑定设备上用新密码重新上传，或在新设备手动导入 .kpkey。",
+        "网站登录密码已重置，已绑定设备的会话已作废。"
+        "这只影响网站登录和这些设备会话，不会更换或作废保险库数据密钥，云端密钥包仍保留。"
+        "解绑某一台设备要到个人中心单独操作，那不会改密码，也不会换钥。"
+        "数据合并和换钥只在桌面客户端进行。",
     )
     return jsonify({"ok": True})
 

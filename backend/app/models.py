@@ -32,6 +32,9 @@ class User(db.Model):
     vault_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     wrapped_kpkey: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     wrapped_kpkey_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # 0 = 尚未由 0.9.1 客户端建立密钥代。换钥或首次原子建立后递增。与 vault_version 一起条件更新。
+    key_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    wrapped_key_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     devices: Mapped[list[Device]] = relationship(back_populates="user", cascade="all, delete-orphan")
     tokens: Mapped[list[EmailToken]] = relationship(back_populates="user", cascade="all, delete-orphan")

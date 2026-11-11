@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Input, Modal, Space, Table, Typography, message } from "antd";
+import { Link } from "react-router-dom";
 import { api, downloadTextFile } from "../api";
 import { useAuth } from "../auth";
 
@@ -11,7 +12,7 @@ export function AccountPage() {
 
   const requestCode = async (purpose: string) => {
     await api.post("/me/request-code", { purpose });
-    message.success("验证码已发送（开发环境见服务器控制台）");
+    message.success("服务器已接受发送。若邮箱没有收到，请稍后重试。");
   };
 
   const revokeDevice = (id: number) => {
@@ -41,7 +42,7 @@ export function AccountPage() {
       content: (
         <div>
           <Typography.Paragraph type="secondary">
-            旧绑定密钥立即失效；已绑定设备可继续同步。
+            这只更换设备绑定密钥。旧绑定密钥立即失效，已绑定设备可继续同步。不会修改网站密码，也不会更换保险库数据密钥。
           </Typography.Paragraph>
           <Button style={{ marginBottom: 12 }} onClick={() => void requestCode("regen_binding_key")}>
             发送验证码
@@ -97,7 +98,7 @@ export function AccountPage() {
         <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
           绑定密钥指纹：{me.bindingKeyFingerprint || "—"}
           <br />
-          云端保险库版本：{me.vaultVersion} · 大小 {me.vaultSizeBytes} 字节
+          云端保险库版本：{me.vaultVersion} · 密钥代 {me.keyVersion ?? 0} · 大小 {me.vaultSizeBytes} 字节
           <br />
           密钥包：{me.hasWrappedKey ? "已上传" : "未上传"}
         </Typography.Paragraph>
@@ -109,7 +110,34 @@ export function AccountPage() {
         </Space>
       </div>
 
+      <div className="kp-card-panel" style={{ marginBottom: 20 }}>
+        <Typography.Title level={4} style={{ marginTop: 0 }}>
+          若不是本人操作
+        </Typography.Title>
+        <Typography.Paragraph type="secondary">
+          下面三件事要分开做。改网站密码、解绑某一台设备、在客户端换钥，互不代替。
+        </Typography.Paragraph>
+        <Typography.Title level={5}>改网站密码</Typography.Title>
+        <Typography.Paragraph>
+          只更换网站登录密码，并作废当前已绑定设备的会话。云端密钥包还在，保险库数据密钥不会因此更换或作废。
+          这不是在设备列表里解绑某一台，也不是换钥。
+        </Typography.Paragraph>
+        <Link to="/forgot">去重置网站密码</Link>
+        <Typography.Title level={5}>解绑设备</Typography.Title>
+        <Typography.Paragraph>
+          在下方列表查看设备，并单独解绑不认识的那一台。解绑不会修改网站密码，也不会更换保险库数据密钥。
+        </Typography.Paragraph>
+        <Typography.Title level={5}>客户端换钥</Typography.Title>
+        <Typography.Paragraph style={{ marginBottom: 0 }}>
+          0.9.1 的数据合并和换钥只在桌面客户端进行。本页没有这项操作。
+          若确认是本人更换过密钥，请在客户端用新的密钥文件恢复同步。
+        </Typography.Paragraph>
+      </div>
+
       <Typography.Title level={4}>已绑定设备</Typography.Title>
+      <Typography.Paragraph type="secondary">
+        这里只查看和解绑设备。解绑不会改网站密码，也不会换钥。
+      </Typography.Paragraph>
       <Table
         rowKey="id"
         dataSource={me.devices}

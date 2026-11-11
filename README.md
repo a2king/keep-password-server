@@ -62,10 +62,13 @@ flask --app wsgi set-admin
 | POST | `/api/me/devices/:id/revoke` | 解绑设备 |
 | POST | `/api/me/binding-key/regenerate` | 重新生成绑定密钥 |
 | POST | `/api/me/delete` | 注销账号 |
-| POST | `/api/sync/device/bind` | 设备绑定 |
-| GET/PUT | `/api/sync/vault` | 下载/上传加密保险库（版本冲突 409） |
-| GET/PUT | `/api/sync/wrapped-key` | 官网密码包裹的 `.kpkey` |
+| POST | `/api/sync/device/bind` | 设备绑定。需要网站账号密码和 `.kpbind`，不是邮箱登录密码 |
+| GET/PUT | `/api/sync/vault` | 下载/上传密文。`keyVersion` 不匹配返回 409；密钥代已建立后，不带 `keyVersion` 的旧客户端返回 426 |
+| GET/PUT | `/api/sync/wrapped-key` | 网站密码包裹的数据密钥。PUT 只允许第一次声明，不能覆盖已有包 |
+| PUT | `/api/sync/commit` | 原子提交。`establish` 首次建立，`rotate` 显式换钥，二者同时写入密钥包和密文 |
 | GET | `/api/admin/overview` | 管理看板数据 |
+
+改网站密码、解绑设备、客户端换钥是三件不同的事。密码重置只作废设备会话，不删除云端密钥包，也不作废数据密钥。个人中心可以查看设备并单独解绑，并在非本人操作时给出这三项指引；没有网站换钥接口，也不接收密钥文件。0.9.1 的数据合并和换钥只由桌面客户端通过 `PUT /api/sync/commit` 完成。发信只用服务器环境变量里的 SMTP，接口响应和日志不回显授权码。
 
 服务器只存加密 blob，无法解密保险库内容。
 

@@ -245,5 +245,26 @@ class MailTests(unittest.TestCase):
         self.assertIn("邮件发送失败", res.get_json()["error"])
 
 
+    def test_smtp_failure_log_omits_credential(self):
+        marker = "smtp-auth-" + "marker"
+        self.app.config["SMTP_HOST"] = "smtp.example.test"
+        self.app.config["SMTP_USERNAME"] = "mailer@example.test"
+        self.app.config["SMTP_PASSWORD"] = marker
+        self.app.config["MAIL_DEV_CONSOLE"] = False
+
+        class Boom(FakeSMTP):
+            def login(self, username, password):
+                raise smtplib.SMTPAuthenticationError(535, b"auth failed")
+
+        with self.app.app_context():
+            with self.assertLogs("app.mail", level="WARNING") as captured:
+                with patch("app.mail.smtplib.SMTP", return_value=Boom("smtp.example.test", 587)):
+                    with self.assertRaises(MailError) as ctx:
+                        send_mail("person@example.com", "subject", "body")
+        self.assertNotIn(marker, "\n".join(captured.output))
+        self.assertNotIn(marker, ctx.exception.public_message)
+        self.assertNotIn(marker, str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
