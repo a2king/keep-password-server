@@ -130,3 +130,16 @@ class AuthThrottle(db.Model):
     ip: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
+
+class DeviceBindCodeRequest(db.Model):
+    """设备绑定验证码请求限流。只存规范化邮箱哈希和 IP，不存明文邮箱。
+
+    email_hash 仅在本次请求通过限流、占用邮箱额度时写入；被 429 拦截的请求只记 IP。
+    """
+
+    __tablename__ = "device_bind_code_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    ip: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)

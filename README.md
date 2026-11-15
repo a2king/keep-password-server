@@ -99,7 +99,7 @@ MAIL_DEV_CONSOLE=false
 
 ## 部署
 
-域名只改 `deploy/domains.env`（由 `deploy/domains.env.example` 复制）。Caddy 和 API 都会读这一份。
+仓库默认 Compose 里，域名写在 `deploy/domains.env`（由 `deploy/domains.env.example` 复制）。API 进程会读这一份；**默认** Caddy 容器走 `deploy/caddy-entrypoint.sh`，根据 `SITE_HOSTS` / `API_HOSTS` 生成 `/tmp/Caddyfile`。
 
 当前约定：
 
@@ -118,6 +118,14 @@ cd frontend && npm ci && npm run build && cd ..
 # 确认 backend/.env 已有 SMTP_*（不要把授权码提交到 git）
 docker compose up -d --build
 ```
+
+### 现网 Caddy 与仓库默认 Compose 的差异
+
+现网生产 **绕过了** `caddy-entrypoint`：宿主机持久化的 `deploy/Caddyfile` 挂载到容器 `/etc/caddy/Caddyfile`。因此 **`API_HOSTS` 目前不是现网生效来源**，也不能假定容器里的 `/tmp/Caddyfile` 在用。这是与仓库 `docker-compose.yml` 默认路径的差别；不要把线上 Caddyfile 或含秘密的 override 复制进 git。
+
+2026-11-15 P0 已由运维在该静态 Caddyfile 中为 `api.keep-password.work` 配置 `reverse_proxy api:8000`，**只重建了 Caddy**；API 容器、`api_data`（容器内 `/app/data`）和邮件配置未改。后续部署必须保留 API 站点块，并复验外网 `https://api.keep-password.work` 的 health 与证书。
+
+现网库类型按运维报告为 SQLite，文件在 `/app/data` 数据卷。代码含 PostgreSQL 咨询锁分支，但未在生产 Postgres 上实测，不能当作已验收。设备绑定验证码限流不要用生产用户真发邮件做回归。
 
 官网 Edge 扩展按钮指向同源 `/api/edge-store`（Caddy 已反代 `/api/*`），由应用 302 到 `EDGE_STORE_URL`。该值是非秘密的商店详情 URL，默认已写在后端配置；前端 JS/文档不含扩展 ID。
 

@@ -89,6 +89,11 @@ class Config:
     EMAIL_CODE_MAX_ATTEMPTS = int(os.environ.get("EMAIL_CODE_MAX_ATTEMPTS", "5"))
     FORGOT_RATE_PER_MINUTE = int(os.environ.get("FORGOT_RATE_PER_MINUTE", "1"))
     FORGOT_RATE_PER_HOUR = int(os.environ.get("FORGOT_RATE_PER_HOUR", "5"))
+    # POST /api/sync/device/request-code：邮箱滑动窗口与来源 IP 请求窗口
+    DEVICE_BIND_CODE_PER_60S = int(os.environ.get("DEVICE_BIND_CODE_PER_60S", "1"))
+    DEVICE_BIND_CODE_PER_HOUR = int(os.environ.get("DEVICE_BIND_CODE_PER_HOUR", "10"))
+    DEVICE_BIND_IP_PER_HOUR = int(os.environ.get("DEVICE_BIND_IP_PER_HOUR", "30"))
+    DEVICE_BIND_CODE_RETENTION_HOURS = int(os.environ.get("DEVICE_BIND_CODE_RETENTION_HOURS", "24"))
     # 非秘密：Edge 加载项详情 URL。只给后端 302 用，不要写进前端源码。
     EDGE_STORE_URL = os.environ.get(
         "EDGE_STORE_URL",
