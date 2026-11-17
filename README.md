@@ -55,22 +55,33 @@ flask --app wsgi set-admin
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | POST | `/api/auth/register` | 注册 |
-| POST | `/api/auth/verify-email` | 邮箱验证并下载绑定密钥 |
+| POST | `/api/auth/verify-email` | 邮箱验证 |
 | POST | `/api/auth/login` | 登录（失败限速 + 验证码） |
 | POST | `/api/auth/forgot-password` / `reset-password` | 重置密码 |
 | GET | `/api/me` | 个人中心 |
 | POST | `/api/me/devices/:id/revoke` | 解绑设备 |
-| POST | `/api/me/binding-key/regenerate` | 重新生成绑定密钥 |
 | POST | `/api/me/delete` | 注销账号 |
-| POST | `/api/sync/device/bind` | 设备绑定。需要网站账号密码和 `.kpbind`，不是邮箱登录密码 |
-| GET/PUT | `/api/sync/vault` | 下载/上传密文。`keyVersion` 不匹配返回 409；密钥代已建立后，不带 `keyVersion` 的旧客户端返回 426 |
-| GET/PUT | `/api/sync/wrapped-key` | 网站密码包裹的数据密钥。PUT 只允许第一次声明，不能覆盖已有包 |
-| PUT | `/api/sync/commit` | 原子提交。`establish` 首次建立，`rotate` 显式换钥，二者同时写入密钥包和密文 |
+| POST | `/api/sync/device/bind` | 设备绑定。只需要网站账号密码和设备绑定验证码。`clientVersion` 低于 `MIN_SYNC_CLIENT_VERSION`（默认 1.0.1）返回 400 `upgradeRequired` |
+| GET/PUT | `/api/sync/vault` | 下载/上传密文。`keyVersion` 不匹配返回 409；密钥代已建立后，不带 `keyVersion` 的旧客户端返回 426；`keyId` 与云端记录不同返回 409 `keyChanged` |
+| GET/PUT | `/api/sync/wrapped-key` | 已停用。GET 恒返回空，PUT 返回 410。服务器不再保存任何密钥包 |
+| PUT | `/api/sync/commit` | 原子提交。`establish` 首次建立，`rotate` 显式换钥，`vault` 只更新密文。旧客户端带上的 `wrappedKeyBase64` 一律忽略 |
 | GET | `/api/admin/overview` | 管理看板数据 |
 
-改网站密码、解绑设备、客户端换钥是三件不同的事。密码重置只作废设备会话，不删除云端密钥包，也不作废数据密钥。个人中心可以查看设备并单独解绑，并在非本人操作时给出这三项指引；没有网站换钥接口，也不接收密钥文件。0.9.1 的数据合并和换钥只由桌面客户端通过 `PUT /api/sync/commit` 完成。发信只用服务器环境变量里的 SMTP，接口响应和日志不回显授权码。
+改网站密码、解绑设备、客户端换钥是三件不同的事。密码重置只作废设备会话，不作废数据密钥。个人中心可以查看设备并单独解绑，并在非本人操作时给出这三项指引；没有网站换钥接口，也不接收密钥文件。0.9.1 的数据合并和换钥只由桌面客户端通过 `PUT /api/sync/commit` 完成。发信只用服务器环境变量里的 SMTP，接口响应和日志不回显授权码。
 
-服务器只存加密 blob，无法解密保险库内容。
+服务器只存加密 blob 和数据密钥编号（`vault_key_id`，密钥 SHA-256 的前 12 位十六进制，与客户端 `.kpkey` 文件名中的编号相同，只用于提示和拦截用错密钥的上传），无法解密保险库内容。数据密钥只由用户自己保管。
+
+### 从 0.1.x / 客户端 0.9.1 升级到 1.0.1
+
+1. 先部署服务端 1.0.1，再发布客户端 1.0.1。旧服务端会拒绝不带 `.kpbind` 的绑定。
+2. 已绑定的 0.9.1 设备可以继续同步；新绑定必须用 1.0.1 客户端。
+3. 客户端 1.0.1 发布后，执行一次清理，删除旧的密钥包和 `.kpbind` 哈希：
+
+   ```bash
+   docker compose exec api flask --app wsgi purge-legacy-keys
+   ```
+
+   1.0.1 服务端已经不再读取这些数据，清理只是删掉留在磁盘上的历史副本。
 
 ## 更新日志
 

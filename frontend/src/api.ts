@@ -27,11 +27,10 @@ export function setToken(token: string | null) {
 export type MeResponse = {
   email: string;
   isAdmin: boolean;
-  bindingKeyFingerprint?: string;
-  bindingKeyCreatedAt?: string;
   vaultVersion: number;
   vaultSizeBytes: number;
-  hasWrappedKey: boolean;
+  /** 云端密文所用加密密钥的编号，与客户端密钥文件名中的编号相同。尚未上传时为空。 */
+  vaultKeyId?: string | null;
   keyVersion: number;
   devices: Array<{
     id: number;
@@ -75,9 +74,6 @@ export async function verifyEmail(email: string, code: string) {
   if (data.token) setToken(data.token);
   return data as {
     ok: boolean;
-    fingerprint: string;
-    filename: string;
-    bindingKeyFile: string;
     token: string;
   };
 }
@@ -107,14 +103,4 @@ export async function fetchOverview() {
 export async function fetchCaptcha() {
   const { data } = await api.get<{ challengeId: string; question: string }>("/auth/captcha");
   return data;
-}
-
-export function downloadTextFile(filename: string, content: string) {
-  const blob = new Blob([content], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }

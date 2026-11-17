@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import secrets
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Callable
@@ -38,14 +37,6 @@ def verify_password(password_hash: str, password: str) -> bool:
 
 def hash_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-def generate_binding_key() -> tuple[str, str, str]:
-    """返回 (明文密钥文件内容, 指纹, 哈希)。"""
-    raw = secrets.token_bytes(32)
-    encoded = "KPB-" + secrets.token_urlsafe(32)
-    fingerprint = hashlib.sha256(raw).hexdigest()[:16]
-    return encoded, fingerprint, hash_token(encoded)
 
 
 def issue_web_token(user: User) -> str:

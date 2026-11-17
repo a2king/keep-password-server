@@ -94,6 +94,8 @@ class Config:
     DEVICE_BIND_CODE_PER_HOUR = int(os.environ.get("DEVICE_BIND_CODE_PER_HOUR", "10"))
     DEVICE_BIND_IP_PER_HOUR = int(os.environ.get("DEVICE_BIND_IP_PER_HOUR", "30"))
     DEVICE_BIND_CODE_RETENTION_HOURS = int(os.environ.get("DEVICE_BIND_CODE_RETENTION_HOURS", "24"))
+    # 低于此版本的客户端不能新绑定设备（它们依赖已移除的 .kpbind 与密钥包）。已绑定的旧设备仍可同步。
+    MIN_SYNC_CLIENT_VERSION = os.environ.get("MIN_SYNC_CLIENT_VERSION", "1.0.1")
     # 非秘密：Edge 加载项详情 URL。只给后端 302 用，不要写进前端源码。
     EDGE_STORE_URL = os.environ.get(
         "EDGE_STORE_URL",

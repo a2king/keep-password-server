@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from datetime import timedelta
 
 from email_validator import EmailNotValidError, validate_email
@@ -13,7 +12,7 @@ from app.extensions import db
 from app.httputil import client_ip
 from app.mail import MailError, send_mail
 from app.models import AuditLog, AuthThrottle, Device, LoginFailure, User, utcnow
-from app.security import generate_binding_key, hash_password, issue_web_token, verify_password
+from app.security import hash_password, issue_web_token, verify_password
 from app.tokens import consume_email_code, send_reset_email, send_verify_email
 
 
@@ -55,23 +54,6 @@ def _throttle_hit(bucket_key: str, action: str) -> bool:
 def _throttle_record(bucket_key: str, action: str) -> None:
     db.session.add(AuthThrottle(bucket_key=bucket_key, action=action, ip=client_ip()))
     db.session.commit()
-
-
-def _binding_file(email: str, raw_key: str, fingerprint: str) -> tuple[str, str]:
-    filename = f"keep-password-binding-{fingerprint}.kpbind"
-    content = json.dumps(
-        {
-            "format": "keep-password-binding",
-            "version": 1,
-            "email": email,
-            "key": raw_key,
-            "fingerprint": fingerprint,
-            "notice": "此文件用于绑定新设备。请妥善保管；在官网重新生成后旧文件立即失效。",
-        },
-        ensure_ascii=False,
-        indent=2,
-    ) + "\n"
-    return filename, content
 
 
 def _revoke_user_devices(user: User) -> int:
@@ -133,29 +115,16 @@ def verify_email():
     user = User.query.filter_by(email=email).first()
     if user is None:
         return jsonify(invalid[0]), invalid[1]
-    if user.is_verified and user.binding_key_hash:
+    if user.is_verified:
         return jsonify(invalid[0]), invalid[1]
     if not consume_email_code(user, "verify", data.get("code", "")):
         return jsonify(invalid[0]), invalid[1]
 
-    raw_key, fingerprint, key_hash = generate_binding_key()
+    # 1.0.1 起不再下发 .kpbind。新设备只需要网站账号、邮箱验证码和用户自己保管的加密密钥。
     user.is_verified = True
-    user.binding_key_hash = key_hash
-    user.binding_key_fingerprint = fingerprint
-    user.binding_key_created_at = utcnow()
-    _audit(user, "verify_email", fingerprint)
+    _audit(user, "verify_email")
     db.session.commit()
-
-    filename, content = _binding_file(user.email, raw_key, fingerprint)
-    return jsonify(
-        {
-            "ok": True,
-            "fingerprint": fingerprint,
-            "filename": filename,
-            "bindingKeyFile": content,
-            "token": issue_web_token(user),
-        }
-    )
+    return jsonify({"ok": True, "token": issue_web_token(user)})
 
 
 @api_bp.post("/auth/resend-verify")
@@ -213,7 +182,6 @@ def login():
             "token": issue_web_token(user),
             "email": user.email,
             "isAdmin": user.is_admin,
-            "bindingKeyFingerprint": user.binding_key_fingerprint,
         }
     )
 
@@ -267,7 +235,7 @@ def _do_reset(data: dict):
         user.email,
         "Keep Password 密码已重置",
         "网站登录密码已重置，已绑定设备的会话已作废。"
-        "这只影响网站登录和这些设备会话，不会更换或作废保险库数据密钥，云端密钥包仍保留。"
+        "这只影响网站登录和这些设备会话，不会更换或作废保险库数据密钥。服务器不保存能解开保险库的密钥。"
         "解绑某一台设备要到个人中心单独操作，那不会改密码，也不会换钥。"
         "数据合并和换钥只在桌面客户端进行。",
     )
