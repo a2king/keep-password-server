@@ -34,3 +34,7 @@ source: https://github.com/a2king/keep-password/releases/tag/v0.9.0
 5. 页面文案不要写 Edge 商店标识、CRX ID、产品 ID 等内部编号。
 
 `README.md` 不要当作版本条目。构建时会忽略它。
+
+## 未发布服务端
+
+- `POST /api/sync/device/request-code`：按规范化邮箱哈希（60 秒最多 1 封、每小时最多 10 封）与 `client_ip()` 来源 IP（每小时最多 30 次请求）做数据库限流；超限返回 HTTP 429 与短中文 JSON，不枚举注册状态。限流在作废旧验证码和发信之前。SQLite 在计数前用事务内写语句拿文件锁（覆盖 gunicorn 多 worker / 独立连接），不用进程锁；PostgreSQL 咨询锁分支未在现网实测。尚未作为独立官网 changelog 发布。

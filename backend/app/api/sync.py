@@ -9,6 +9,7 @@ from flask import current_app, g, jsonify, request
 from sqlalchemy import select, update
 
 from app.api import api_bp
+from app.device_bind_rate import RATE_LIMIT_ERROR, consume_device_bind_code_quota
 from app.extensions import db
 from app.httputil import client_ip
 from app.models import AuditLog, Device, SyncEvent, User, utcnow
@@ -42,6 +43,8 @@ def device_request_code():
         email = _normalize_email(data.get("email", ""))
     except EmailNotValidError:
         return jsonify({"error": "邮箱格式不正确"}), 400
+    if not consume_device_bind_code_quota(email):
+        return jsonify({"error": RATE_LIMIT_ERROR}), 429
     user = User.query.filter_by(email=email, is_verified=True).first()
     if user and not user.is_disabled:
         send_device_bind_email(user)
