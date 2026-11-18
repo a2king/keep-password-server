@@ -64,6 +64,10 @@ flask --app wsgi set-admin
 | POST | `/api/sync/device/bind` | 设备绑定。只需要网站账号密码和设备绑定验证码。`clientVersion` 低于 `MIN_SYNC_CLIENT_VERSION`（默认 1.0.1）返回 400 `upgradeRequired` |
 | GET/PUT | `/api/sync/vault` | 下载/上传密文。`keyVersion` 不匹配返回 409；密钥代已建立后，不带 `keyVersion` 的旧客户端返回 426；`keyId` 与云端记录不同返回 409 `keyChanged` |
 | GET/PUT | `/api/sync/wrapped-key` | 已停用。GET 恒返回空，PUT 返回 410。服务器不再保存任何密钥包 |
+| POST | `/api/sync/pairing` | 新设备发起配对，只提交临时公钥的承诺（sha256） |
+| GET | `/api/sync/pairing/pending` | 已绑定的其他设备查看待批准的配对请求 |
+| GET | `/api/sync/pairing/:id` | 请求方或响应方查看状态；信封只返回给请求方 |
+| POST | `/api/sync/pairing/:id/offer` `reveal` `approve` `reject` `complete` | 交换临时公钥、提交加密的密钥信封、拒绝/取消、完成后清空。服务器只中转，解不开 |
 | PUT | `/api/sync/commit` | 原子提交。`establish` 首次建立，`rotate` 显式换钥，`vault` 只更新密文。旧客户端带上的 `wrappedKeyBase64` 一律忽略 |
 | GET | `/api/admin/overview` | 管理看板数据 |
 
