@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Input, Modal, Space, Table, Typography, message } from "antd";
 import { Link } from "react-router-dom";
-import { api, downloadTextFile } from "../api";
+import { api } from "../api";
 import { useAuth } from "../auth";
 
 export function AccountPage() {
@@ -30,30 +30,6 @@ export function AccountPage() {
       onOk: async () => {
         await api.post(`/me/devices/${id}/revoke`, { code });
         message.success("已解绑");
-        await refresh();
-      },
-    });
-  };
-
-  const regenKey = () => {
-    let code = "";
-    Modal.confirm({
-      title: "重新生成绑定密钥",
-      content: (
-        <div>
-          <Typography.Paragraph type="secondary">
-            这只更换设备绑定密钥。旧绑定密钥立即失效，已绑定设备可继续同步。不会修改网站密码，也不会更换保险库数据密钥。
-          </Typography.Paragraph>
-          <Button style={{ marginBottom: 12 }} onClick={() => void requestCode("regen_binding_key")}>
-            发送验证码
-          </Button>
-          <Input placeholder="邮箱验证码" onChange={(e) => (code = e.target.value)} />
-        </div>
-      ),
-      onOk: async () => {
-        const { data } = await api.post("/me/binding-key/regenerate", { code });
-        downloadTextFile(data.filename, data.bindingKeyFile);
-        message.success("新绑定密钥已下载");
         await refresh();
       },
     });
@@ -96,14 +72,11 @@ export function AccountPage() {
           {me.email}
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
-          绑定密钥指纹：{me.bindingKeyFingerprint || "—"}
-          <br />
           云端保险库版本：{me.vaultVersion} · 密钥代 {me.keyVersion ?? 0} · 大小 {me.vaultSizeBytes} 字节
           <br />
-          密钥包：{me.hasWrappedKey ? "已上传" : "未上传"}
+          云端加密密钥编号：{me.vaultKeyId || "—"}（与客户端加密密钥文件名中的编号一致，换电脑时请带上这一份）
         </Typography.Paragraph>
         <Space>
-          <Button onClick={regenKey}>重新生成绑定密钥</Button>
           <Button danger loading={busy} onClick={deleteAccount}>
             注销账号
           </Button>
@@ -119,7 +92,7 @@ export function AccountPage() {
         </Typography.Paragraph>
         <Typography.Title level={5}>改网站密码</Typography.Title>
         <Typography.Paragraph>
-          只更换网站登录密码，并作废当前已绑定设备的会话。云端密钥包还在，保险库数据密钥不会因此更换或作废。
+          只更换网站登录密码，并作废当前已绑定设备的会话。服务器不保存能解开保险库的密钥，保险库数据密钥不会因此更换或作废。
           这不是在设备列表里解绑某一台，也不是换钥。
         </Typography.Paragraph>
         <Link to="/forgot">去重置网站密码</Link>

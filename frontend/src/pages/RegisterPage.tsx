@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Form, Input, Steps, Typography, message } from "antd";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { downloadTextFile, register, resendVerify, verifyEmail } from "../api";
+import { register, resendVerify, verifyEmail } from "../api";
 import { useAuth } from "../auth";
 
 export function RegisterPage() {
@@ -58,10 +58,9 @@ export function RegisterPage() {
   const onVerify = async (values: { code: string }) => {
     setLoading(true);
     try {
-      const data = await verifyEmail(email, values.code);
-      downloadTextFile(data.filename, data.bindingKeyFile);
+      await verifyEmail(email, values.code);
       await refresh();
-      message.success("验证成功，已开始下载绑定密钥文件");
+      message.success("邮箱验证成功");
       setStep(2);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -112,7 +111,7 @@ export function RegisterPage() {
               <Input maxLength={8} style={{ textTransform: "uppercase" }} />
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>
-              验证并下载绑定密钥
+              验证邮箱
             </Button>
             <Button style={{ marginTop: 12 }} onClick={onResend} loading={resending} block>
               重新发送验证码
@@ -122,7 +121,7 @@ export function RegisterPage() {
         {step === 2 && (
           <>
             <Typography.Paragraph>
-              请妥善保存刚下载的 <code>.kpbind</code> 文件。在客户端设置 → 云同步中用邮箱、密码、绑定密钥与验证码完成本机绑定。
+              账号已就绪。在桌面客户端「设置 → 云同步」中填写邮箱、网站密码和邮件验证码即可开启同步。换电脑时，请带上客户端保存的加密密钥文件。
             </Typography.Paragraph>
             <Button type="primary" onClick={() => navigate("/account")} block>
               进入个人中心

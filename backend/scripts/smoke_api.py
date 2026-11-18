@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import base64
-import json
 import sys
 from pathlib import Path
 
@@ -42,9 +41,8 @@ def main() -> int:
     assert r.status_code == 200, r.data
     body = r.get_json()
     web_token = body["token"]
-    binding_file = body["bindingKeyFile"]
-    binding_key = json.loads(binding_file)["key"]
-    print("verified", body["fingerprint"])
+    assert "bindingKeyFile" not in body, body
+    print("verified")
 
     r = client.post("/api/auth/login", json={"email": email, "password": password})
     assert r.status_code == 200, r.data
@@ -62,11 +60,10 @@ def main() -> int:
         json={
             "email": email,
             "password": password,
-            "bindingKey": binding_key,
             "code": "654321",
             "deviceName": "smoke-pc",
             "platform": "Windows",
-            "clientVersion": "0.0.0-test",
+            "clientVersion": "1.0.1",
         },
     )
     assert r.status_code == 200, r.data

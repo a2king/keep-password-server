@@ -58,6 +58,34 @@ def create_app(config_object: type = Config, *, init_db: bool = True) -> Flask:
     return app
 
 
+def purge_legacy_keys() -> int:
+    """清空服务器上所有能帮助解开保险库或旧版绑定的数据。返回受影响的账号数。
+
+    1.0.1 的服务器不再读写这些列。数据密钥由用户自己保管（.kpkey），服务器只留密文。
+    """
+    from sqlalchemy import or_
+
+    from app.models import AuditLog, User
+
+    users = User.query.filter(
+        or_(
+            User.wrapped_kpkey.is_not(None),
+            User.wrapped_key_sha256.is_not(None),
+            User.binding_key_hash.is_not(None),
+        )
+    ).all()
+    for user in users:
+        user.wrapped_kpkey = None
+        user.wrapped_key_sha256 = None
+        user.wrapped_kpkey_updated_at = None
+        user.binding_key_hash = None
+        user.binding_key_fingerprint = None
+        user.binding_key_created_at = None
+        db.session.add(AuditLog(user_id=user.id, action="purge_legacy_keys", detail="", ip=""))
+    db.session.commit()
+    return len(users)
+
+
 def register_cli(app: Flask) -> None:
     @app.cli.command("init-db")
     def init_db_cmd() -> None:
@@ -66,6 +94,14 @@ def register_cli(app: Flask) -> None:
 
         ensure_schema(app)
         print("database ready")
+
+    @app.cli.command("purge-legacy-keys")
+    def purge_legacy_keys_cmd() -> None:
+        """清空 0.9.x 留下的密钥包与 .kpbind 哈希。1.0.1 起这些数据已不再使用。"""
+        import click
+
+        cleared = purge_legacy_keys()
+        click.echo(f"已清空 {cleared} 个账号的旧密钥包与绑定密钥")
 
     @app.cli.command("set-admin")
     def set_admin() -> None:

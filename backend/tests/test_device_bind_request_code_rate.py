@@ -19,7 +19,7 @@ from app.device_bind_rate import RATE_LIMIT_ERROR, hash_normalized_email
 from app.extensions import db
 from app.mail import MailError
 from app.models import DeviceBindCodeRequest, EmailToken, User
-from app.security import generate_binding_key, hash_password, hash_token
+from app.security import hash_password, hash_token
 from app.tokens import consume_email_code
 
 
@@ -123,7 +123,6 @@ class DeviceBindRequestCodeRateTests(unittest.TestCase):
         *,
         verified: bool = True,
         disabled: bool = False,
-        with_binding: bool = False,
     ) -> User:
         with self.app.app_context():
             user = User(
@@ -132,11 +131,6 @@ class DeviceBindRequestCodeRateTests(unittest.TestCase):
                 is_verified=verified,
                 is_disabled=disabled,
             )
-            if with_binding:
-                raw_key, fingerprint, key_hash = generate_binding_key()
-                user.binding_key_hash = key_hash
-                user.binding_key_fingerprint = fingerprint
-                self.binding_key = raw_key
             db.session.add(user)
             db.session.commit()
             self.user_id = user.id
@@ -185,7 +179,7 @@ class DeviceBindRequestCodeRateTests(unittest.TestCase):
             self.assertEqual(hashes, {hash_normalized_email("nobody@example.com"), None})
 
     def test_rate_limited_request_does_not_invalidate_previous_code(self):
-        self._seed_user("owner@example.com", with_binding=True)
+        self._seed_user("owner@example.com")
         first = self._post("owner@example.com")
         self.assertEqual(first.status_code, 200)
         known = "ABCD2345"
@@ -457,7 +451,7 @@ class DeviceBindRequestCodeRateTests(unittest.TestCase):
 
     def test_multiprocess_rejects_keep_previous_code(self):
         email = "mp-keep@example.com"
-        self._seed_user(email, with_binding=True)
+        self._seed_user(email)
         self.assertEqual(self._post(email).status_code, 200)
         known = "ABCD2345"
         with self.app.app_context():
@@ -558,7 +552,7 @@ class DeviceBindRequestCodeRateTests(unittest.TestCase):
         health = self.client.get("/api/health")
         self.assertEqual(health.status_code, 200)
         self.assertEqual(health.get_json(), {"ok": True, "service": "keep-password-server"})
-        self._seed_user("bind@example.com", with_binding=True)
+        self._seed_user("bind@example.com")
         self.assertEqual(self._post("bind@example.com").status_code, 200)
         code = "ABCD2345"
         with self.app.app_context():
@@ -574,11 +568,10 @@ class DeviceBindRequestCodeRateTests(unittest.TestCase):
             json={
                 "email": "bind@example.com",
                 "password": "website-password-12",
-                "bindingKey": self.binding_key,
                 "code": code,
                 "deviceName": "test-pc",
                 "platform": "linux",
-                "clientVersion": "0.9.1",
+                "clientVersion": "1.0.1",
             },
         )
         self.assertEqual(bind.status_code, 200, bind.get_data(as_text=True))
@@ -589,15 +582,13 @@ class DeviceBindRequestCodeRateTests(unittest.TestCase):
                 "deviceToken",
                 "deviceId",
                 "vaultVersion",
-                "bindingKeyFingerprint",
+                "vaultKeyId",
                 "hasVault",
-                "hasWrappedKey",
                 "keyVersion",
                 "serverTime",
             },
         )
         self.assertNotIn("password", bind.get_data(as_text=True).lower())
-        self.assertNotIn(self.binding_key, bind.get_data(as_text=True))
         with self.app.app_context():
             tables = inspect(db.engine).get_table_names()
         self.assertIn("device_bind_code_requests", tables)

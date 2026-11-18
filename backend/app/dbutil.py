@@ -66,6 +66,7 @@ def _migrate_sqlite_columns() -> None:
         [
             ("key_version", "INTEGER NOT NULL DEFAULT 0"),
             ("wrapped_key_sha256", "VARCHAR(64)"),
+            ("vault_key_id", "VARCHAR(32)"),
         ],
     )
 

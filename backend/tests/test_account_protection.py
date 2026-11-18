@@ -65,7 +65,7 @@ class AccountProtectionTests(unittest.TestCase):
                 "expectedKeyVersion": 0,
                 "expectedVaultVersion": 0,
                 "dataBase64": base64.b64encode(b"vault-v1").decode("ascii"),
-                "wrappedKeyBase64": base64.b64encode(b"wrap-v1").decode("ascii"),
+                "keyId": "AAAAAAAAAAAA",
             },
             headers={"Authorization": f"Bearer {self.device_token}"},
         )
@@ -91,7 +91,6 @@ class AccountProtectionTests(unittest.TestCase):
                 "/api/me",
                 "/api/me/request-code",
                 "/api/me/devices/<int:device_id>/revoke",
-                "/api/me/binding-key/regenerate",
                 "/api/me/delete",
             },
         )
@@ -106,7 +105,7 @@ class AccountProtectionTests(unittest.TestCase):
                 "expectedKeyVersion": 1,
                 "expectedVaultVersion": 1,
                 "dataBase64": base64.b64encode(b"vault-new").decode("ascii"),
-                "wrappedKeyBase64": base64.b64encode(b"wrap-new").decode("ascii"),
+                "keyId": "BBBBBBBBBBBB",
             },
             headers=headers,
         )
@@ -132,7 +131,8 @@ class AccountProtectionTests(unittest.TestCase):
         with self.app.app_context():
             user = db.session.get(User, self.user_id)
             self.assertEqual(user.key_version, 1)
-            self.assertEqual(user.wrapped_kpkey, b"wrap-v1")
+            self.assertEqual(user.vault_key_id, "AAAAAAAAAAAA")
+            self.assertIsNone(user.wrapped_kpkey)
             self.assertEqual(user.password_hash, password_hash)
             self.assertIsNotNone(db.session.get(Device, self.revoke_device_id).revoked_at)
             self.assertIsNone(db.session.get(Device, self.keep_device_id).revoked_at)

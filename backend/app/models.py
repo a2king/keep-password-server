@@ -21,6 +21,7 @@ class User(db.Model):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # 0.9.x 的 .kpbind 绑定密钥。1.0.1 起不再生成、不再校验；列保留到运维执行 purge-legacy-keys 清空。
     binding_key_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     binding_key_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     binding_key_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -30,11 +31,16 @@ class User(db.Model):
     vault_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     vault_size_bytes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     vault_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 0.9.1 用网站密码包裹的数据密钥。1.0.1 起不再写入、不再下发；建立或换钥时清空，
+    # 其余由运维执行 purge-legacy-keys 清空。服务器不应持有任何能解开保险库的数据。
     wrapped_kpkey: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     wrapped_kpkey_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # 0 = 尚未由 0.9.1 客户端建立密钥代。换钥或首次原子建立后递增。与 vault_version 一起条件更新。
+    # 0 = 尚未建立密钥代。换钥或首次原子建立后递增。与 vault_version 一起条件更新。
     key_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     wrapped_key_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 当前云端密文所用数据密钥的标识：SHA-256 前 12 位十六进制，与客户端 .kpkey 文件名中的编号相同。
+    # 只用于提示用户该选哪一份密钥文件、拦截用错密钥的上传，不能用来解密。
+    vault_key_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     devices: Mapped[list[Device]] = relationship(back_populates="user", cascade="all, delete-orphan")
     tokens: Mapped[list[EmailToken]] = relationship(back_populates="user", cascade="all, delete-orphan")

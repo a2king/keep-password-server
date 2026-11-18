@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import json
-
 from flask import g, jsonify, request
 
 from app.api import api_bp
 from app.extensions import db
 from app.httputil import client_ip
 from app.models import AuditLog, Device, utcnow
-from app.security import generate_binding_key, require_web_auth, verify_password
+from app.security import require_web_auth, verify_password
 from app.tokens import consume_email_code, send_sensitive_email
 from app.vault_storage import delete_vault
 
@@ -28,11 +26,9 @@ def me():
         {
             "email": user.email,
             "isAdmin": user.is_admin,
-            "bindingKeyFingerprint": user.binding_key_fingerprint,
-            "bindingKeyCreatedAt": user.binding_key_created_at.isoformat() if user.binding_key_created_at else None,
             "vaultVersion": user.vault_version,
             "vaultSizeBytes": user.vault_size_bytes,
-            "hasWrappedKey": user.wrapped_kpkey is not None,
+            "vaultKeyId": user.vault_key_id,
             "keyVersion": user.key_version,
             "devices": [
                 {
@@ -56,7 +52,6 @@ def request_code():
     purpose = data.get("purpose") or ""
     mapping = {
         "unbind_device": "设备解绑确认",
-        "regen_binding_key": "重新生成绑定密钥确认",
         "delete_account": "注销账号确认",
     }
     if purpose not in mapping:
@@ -78,40 +73,6 @@ def revoke_device(device_id: int):
     _audit("revoke_device", str(device_id))
     db.session.commit()
     return jsonify({"ok": True})
-
-
-@api_bp.post("/me/binding-key/regenerate")
-@require_web_auth
-def regenerate_binding_key():
-    data = request.get_json(silent=True) or {}
-    if not consume_email_code(g.user, "regen_binding_key", data.get("code", "")):
-        return jsonify({"error": "验证码不正确或已过期"}), 400
-    raw_key, fingerprint, key_hash = generate_binding_key()
-    g.user.binding_key_hash = key_hash
-    g.user.binding_key_fingerprint = fingerprint
-    g.user.binding_key_created_at = utcnow()
-    _audit("regen_binding_key", fingerprint)
-    db.session.commit()
-    content = json.dumps(
-        {
-            "format": "keep-password-binding",
-            "version": 1,
-            "email": g.user.email,
-            "key": raw_key,
-            "fingerprint": fingerprint,
-            "notice": "此文件用于绑定新设备。请妥善保管；在官网重新生成后旧文件立即失效。",
-        },
-        ensure_ascii=False,
-        indent=2,
-    ) + "\n"
-    return jsonify(
-        {
-            "ok": True,
-            "fingerprint": fingerprint,
-            "filename": f"keep-password-binding-{fingerprint}.kpbind",
-            "bindingKeyFile": content,
-        }
-    )
 
 
 @api_bp.post("/me/delete")
