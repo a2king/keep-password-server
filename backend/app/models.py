@@ -149,3 +149,27 @@ class DeviceBindCodeRequest(db.Model):
     email_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     ip: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+
+
+class DevicePairing(db.Model):
+    """新设备向已绑定设备请求数据密钥的一次性会话。
+
+    服务器只转发：新设备公钥的承诺与公钥、批准设备的公钥、用两边临时密钥加密的密钥信封。
+    这些都不能用来解密保险库。会话几分钟后过期，完成后清空公钥和信封。
+    """
+
+    __tablename__ = "device_pairings"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    requester_device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
+    approver_device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    # requested -> offered -> revealed -> approved -> completed；任一阶段可 rejected / cancelled，或过期。
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="requested")
+    commitment: Mapped[str] = mapped_column(String(64), nullable=False)
+    requester_public_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approver_public_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    envelope: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)

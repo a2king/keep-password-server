@@ -45,5 +45,6 @@ source: https://github.com/a2king/keep-password/releases/tag/v0.9.0
 - 新增 `users.vault_key_id`（数据密钥 SHA-256 前 12 位十六进制，客户端 `.kpkey` 文件名中的编号）。`commit` 和 `PUT /api/sync/vault` 可带 `keyId`，与记录不同时返回 409 `keyChanged`；`bind`、`status`、`/api/me` 返回 `vaultKeyId`。
 - 新增 `flask --app wsgi purge-legacy-keys`，清空历史密钥包与 `.kpbind` 哈希。
 - 官网注册、个人中心、使用文档、安全说明和隐私摘要同步更新。
+- 新增设备配对接口 `/api/sync/pairing/*`：新设备经已绑定设备核对 6 位确认码（或扫码）批准后，取得用双方临时 X25519 密钥加密的数据密钥。服务器只中转承诺、临时公钥和密文信封，10 分钟过期，完成后清空；每账号 10 分钟最多 10 次。新表 `device_pairings` 由 `create_all` 建立。
 
 - `POST /api/sync/device/request-code`：按规范化邮箱哈希（60 秒最多 1 封、每小时最多 10 封）与 `client_ip()` 来源 IP（每小时最多 30 次请求）做数据库限流；超限返回 HTTP 429 与短中文 JSON，不枚举注册状态。限流在作废旧验证码和发信之前。SQLite 在计数前用事务内写语句拿文件锁（覆盖 gunicorn 多 worker / 独立连接），不用进程锁；PostgreSQL 咨询锁分支未在现网实测。尚未作为独立官网 changelog 发布。
